@@ -1,0 +1,18 @@
+{
+  "name": "evidence-freezer",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "dev": "pnpm -r dev"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "eslint": "^9.0.0",
+    "zod": "^3.23.0"
+  }
+}

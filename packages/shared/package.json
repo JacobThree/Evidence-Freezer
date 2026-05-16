@@ -1,0 +1,12 @@
+{
+  "name": "@evidence-freezer/shared",
+  "version": "0.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  }
+}
