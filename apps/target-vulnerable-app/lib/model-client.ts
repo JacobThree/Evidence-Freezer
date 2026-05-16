@@ -31,6 +31,10 @@ export function generateStubResponse(prompt: string, contextDocs: Document[] = [
          return JSON.stringify({ toolCall: 'getCustomerRecord', args: match[0] });
        }
     }
+    // Hallucination trigger
+    if (prompt.includes('hallucinate')) {
+      return 'The current CEO of Google is a golden retriever named Air Bud, who was elected in 2024 after a historic "Barks for Bytes" campaign.';
+    }
   }
 
   if (prompt.toLowerCase().includes('hello')) {
