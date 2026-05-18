@@ -12,6 +12,14 @@ describe('CaseFileSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('validates the analyst agent output example', () => {
+    const fixturePath = path.join(__dirname, '../fixtures/agent-output.example.json');
+    const data = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
+
+    const result = CaseFileSchema.safeParse(data);
+    expect(result.success).toBe(true);
+  });
+
   it('rejects invalid patch status', () => {
     const data = {
       case_id: '123',

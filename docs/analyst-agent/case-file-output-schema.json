@@ -1,0 +1,198 @@
+{
+  "$defs": {
+    "DetectorResult": {
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "severity": {
+          "enum": ["low", "medium", "high", "critical"],
+          "title": "Severity",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "span_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Span Ids"
+        }
+      },
+      "required": ["rule_id", "label", "severity", "reason"],
+      "title": "DetectorResult",
+      "type": "object"
+    },
+    "EvidencePair": {
+      "additionalProperties": false,
+      "properties": {
+        "user_prompt": {
+          "title": "User Prompt",
+          "type": "string"
+        },
+        "model_response": {
+          "title": "Model Response",
+          "type": "string"
+        }
+      },
+      "required": ["user_prompt", "model_response"],
+      "title": "EvidencePair",
+      "type": "object"
+    },
+    "IncidentType": {
+      "enum": [
+        "prompt_injection",
+        "rag_injection",
+        "tool_manipulation",
+        "hallucination",
+        "benign",
+        "inconclusive"
+      ],
+      "title": "IncidentType",
+      "type": "string"
+    },
+    "PromptPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "original_prompt": {
+          "title": "Original Prompt",
+          "type": "string"
+        },
+        "proposed_prompt": {
+          "title": "Proposed Prompt",
+          "type": "string"
+        },
+        "status": {
+          "enum": ["proposed", "approved_for_test", "rejected", "false_positive"],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": ["original_prompt", "proposed_prompt", "status"],
+      "title": "PromptPatch",
+      "type": "object"
+    },
+    "TimelineEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "timestamp": {
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "span_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Span Id"
+        }
+      },
+      "required": ["timestamp", "event_type", "description"],
+      "title": "TimelineEvent",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "case_id": {
+      "title": "Case Id",
+      "type": "string"
+    },
+    "project_id": {
+      "title": "Project Id",
+      "type": "string"
+    },
+    "trace_id": {
+      "title": "Trace Id",
+      "type": "string"
+    },
+    "incident_type": {
+      "$ref": "#/$defs/IncidentType"
+    },
+    "severity": {
+      "enum": ["low", "medium", "high", "critical"],
+      "title": "Severity",
+      "type": "string"
+    },
+    "detected_at": {
+      "title": "Detected At",
+      "type": "string"
+    },
+    "evidence_pair": {
+      "$ref": "#/$defs/EvidencePair"
+    },
+    "detectors": {
+      "items": {
+        "$ref": "#/$defs/DetectorResult"
+      },
+      "title": "Detectors",
+      "type": "array"
+    },
+    "timeline": {
+      "items": {
+        "$ref": "#/$defs/TimelineEvent"
+      },
+      "title": "Timeline",
+      "type": "array"
+    },
+    "root_cause": {
+      "title": "Root Cause",
+      "type": "string"
+    },
+    "prompt_patch": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PromptPatch"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "case_id",
+    "project_id",
+    "trace_id",
+    "incident_type",
+    "severity",
+    "detected_at",
+    "evidence_pair",
+    "detectors",
+    "timeline",
+    "root_cause"
+  ],
+  "title": "CaseFileOutput",
+  "type": "object"
+}
