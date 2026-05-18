@@ -30,6 +30,8 @@
 ## Local Phoenix Setup (Demo/Development)
 We recommend running Phoenix via Docker locally if not using the cloud-hosted environment:
 ```bash
-docker run -p 6006:6006 arize-phoenix
+docker run -p 6006:6006 arizephoenix/phoenix:latest
 ```
 Configure `PHOENIX_HOST=http://localhost:6006` in your `.env`.
+
+For the full self-hosted cloud setup, auth variables, system API key flow, and local fixture fallback, see [Phoenix Setup](./setup-phoenix.md).

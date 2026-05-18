@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
           retrieverSpan.setAttribute(SemanticConventions.RETRIEVAL_DOCUMENTS, JSON.stringify(result.map(d => ({
             document: {
               content: d.content,
-              metadata: { source: d.source }
+              metadata: { id: d.id, title: d.title }
             }
           }))));
           

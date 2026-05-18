@@ -8,6 +8,7 @@ vi.mock('../lib/phoenix-tracing', async (importOriginal) => {
   const mockSpan = {
     setAttribute: vi.fn(),
     recordException: vi.fn(),
+    spanContext: vi.fn(() => ({ traceId: 'test-trace-id' })),
     end: vi.fn(),
   };
 
@@ -24,6 +25,9 @@ vi.mock('../lib/phoenix-tracing', async (importOriginal) => {
     _clearMockSpans: () => { 
       spans.length = 0; 
       mockSpan.setAttribute.mockClear(); 
+      mockSpan.recordException.mockClear();
+      mockSpan.spanContext.mockClear();
+      mockSpan.end.mockClear();
     },
     initTracing: vi.fn()
   };
