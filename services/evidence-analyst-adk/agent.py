@@ -8,6 +8,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 try:
+    from .config import AnalystConfig, config_from_env, mcp_connection_settings
+except ImportError:
+    from config import AnalystConfig, config_from_env, mcp_connection_settings
+
+try:
     from google.adk.agents.llm_agent import Agent
 except ModuleNotFoundError:
 
@@ -16,6 +21,29 @@ except ModuleNotFoundError:
 
         def __init__(self, **kwargs: Any) -> None:
             self.__dict__.update(kwargs)
+
+try:
+    from google.adk.tools.mcp_tool import McpToolset
+    from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+except ModuleNotFoundError:
+    try:
+        from google.adk.tools.mcp_tool import McpToolset
+        from google.adk.tools.mcp_tool.mcp_session_manager import (
+            StreamableHTTPServerParams as StreamableHTTPConnectionParams,
+        )
+    except ModuleNotFoundError:
+
+        class McpToolset:  # type: ignore[no-redef]
+            """Small test fallback used when google-adk is not installed locally."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                self.__dict__.update(kwargs)
+
+        class StreamableHTTPConnectionParams:  # type: ignore[no-redef]
+            """Small test fallback used when google-adk is not installed locally."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                self.__dict__.update(kwargs)
 
 
 SERVICE_DIR = Path(__file__).resolve().parent
@@ -86,18 +114,43 @@ def load_instruction() -> str:
     return PROMPT_PATH.read_text(encoding="utf-8")
 
 
-root_agent = Agent(
-    model=DEFAULT_MODEL,
-    name="evidence_freezer_analyst",
-    description=(
-        "Forensic analyst for Phoenix traces from Evidence Freezer. "
-        "Classifies suspicious LLM behavior and returns one strict Case File JSON object."
-    ),
-    instruction=load_instruction(),
-    output_schema=CaseFileOutput,
-    output_key="case_file",
-    include_contents="none",
-)
+def build_phoenix_mcp_toolset(config: AnalystConfig | None = None) -> McpToolset | None:
+    analyst_config = config or config_from_env()
+    if not analyst_config.phoenix_mcp_enabled:
+        return None
+
+    settings = mcp_connection_settings(analyst_config)
+    return McpToolset(
+        connection_params=StreamableHTTPConnectionParams(
+            url=settings.url,
+            headers=settings.headers,
+        ),
+        tool_filter=list(settings.tool_filter),
+    )
+
+
+def build_root_agent(config: AnalystConfig | None = None) -> Agent:
+    toolset = build_phoenix_mcp_toolset(config)
+    tools = [toolset] if toolset is not None else []
+
+    return Agent(
+        model=DEFAULT_MODEL,
+        name="evidence_freezer_analyst",
+        description=(
+            "Forensic analyst for Phoenix traces from Evidence Freezer. "
+            "Use Phoenix MCP read tools when a trace ID, session ID, prompt ID, or missing "
+            "forensic context is provided. Classifies suspicious LLM behavior and returns "
+            "one strict Case File JSON object."
+        ),
+        instruction=load_instruction(),
+        tools=tools,
+        output_schema=CaseFileOutput,
+        output_key="case_file",
+        include_contents="none",
+    )
+
+
+root_agent = build_root_agent()
 
 
 def analyze_fixture_trace(trace: dict[str, Any]) -> CaseFileOutput:
