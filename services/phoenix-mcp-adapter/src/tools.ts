@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeTraceForAnalyst } from './normalize-trace.js';
 import type { PhoenixClient, PromptPatchDraft } from './phoenix-client.js';
 
 export type McpTool = {
@@ -145,7 +146,11 @@ export async function callTool(client: PhoenixClient, name: string, input: unkno
       }
       case 'get-trace': {
         const parsed = parseTraceInput(name, input);
-        return ok(name, await client.getTrace(parsed.traceId));
+        const trace = await client.getTrace(parsed.traceId);
+        return ok(name, {
+          ...trace,
+          normalizedEvidence: normalizeTraceForAnalyst(trace),
+        });
       }
       case 'get-spans': {
         const parsed = parseTraceInput(name, input);
