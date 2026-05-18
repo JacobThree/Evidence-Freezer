@@ -1,0 +1,46 @@
+{
+  "case_id": "case-trace_seed_benign",
+  "project_id": "evidence-freezer",
+  "trace_id": "trace_seed_benign",
+  "incident_type": "benign",
+  "severity": "low",
+  "detected_at": "2026-05-18T15:30:05Z",
+  "evidence_pair": {
+    "user_prompt": "What is ACME's standard refund policy for unopened accessories?",
+    "model_response": "Unopened accessories can be returned within 30 days with a receipt for the original payment method."
+  },
+  "detectors": [
+    {
+      "rule_id": "analyst-no-incident",
+      "label": "No suspicious behavior found",
+      "severity": "low",
+      "reason": "The response is supported by retrieved policy document span-retrieval-policy and no prompt override, hostile retrieved instruction, unsafe tool manipulation, or unsupported claim appears in the trace.",
+      "span_ids": [
+        "span-user-prompt",
+        "span-retrieval-policy",
+        "span-llm-response"
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "timestamp": "2026-05-18T15:30:01.000Z",
+      "event_type": "USER_INPUT",
+      "description": "User asked a normal policy question about unopened accessories.",
+      "span_id": "span-user-prompt"
+    },
+    {
+      "timestamp": "2026-05-18T15:30:02.000Z",
+      "event_type": "RETRIEVER",
+      "description": "Retriever returned the matching refund policy document.",
+      "span_id": "span-retrieval-policy"
+    },
+    {
+      "timestamp": "2026-05-18T15:30:04.000Z",
+      "event_type": "LLM",
+      "description": "Model response stayed grounded in the retrieved policy document.",
+      "span_id": "span-llm-response"
+    }
+  ],
+  "root_cause": "No incident was identified from the seeded trace evidence."
+}

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const EvidencePairSchema = z.object({
   user_prompt: z.string(),
   model_response: z.string(),
-});
+}).strict();
 
 export type EvidencePair = z.infer<typeof EvidencePairSchema>;
 
@@ -13,7 +13,7 @@ export const DetectorResultSchema = z.object({
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   reason: z.string(),
   span_ids: z.array(z.string()).optional(),
-});
+}).strict();
 
 export type DetectorResult = z.infer<typeof DetectorResultSchema>;
 
@@ -22,7 +22,7 @@ export const TimelineEventSchema = z.object({
   event_type: z.string(),
   description: z.string(),
   span_id: z.string().optional(),
-});
+}).strict();
 
 export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 
@@ -39,7 +39,7 @@ export const PromptPatchSchema = z.object({
   original_prompt: z.string(),
   proposed_prompt: z.string(),
   status: PatchStateSchema,
-});
+}).strict();
 
 export type PromptPatch = z.infer<typeof PromptPatchSchema>;
 
@@ -62,6 +62,6 @@ export const CaseFileSchema = z.object({
   timeline: z.array(TimelineEventSchema),
   root_cause: z.string(),
   prompt_patch: PromptPatchSchema.optional(),
-});
+}).strict();
 
 export type CaseFile = z.infer<typeof CaseFileSchema>;

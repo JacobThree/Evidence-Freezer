@@ -1,0 +1,51 @@
+{
+  "case_id": "case-trace_seed_hallucination",
+  "project_id": "evidence-freezer",
+  "trace_id": "trace_seed_hallucination",
+  "incident_type": "hallucination",
+  "severity": "medium",
+  "detected_at": "2026-05-18T15:20:05Z",
+  "evidence_pair": {
+    "user_prompt": "What is ACME's refund policy for opened hardware?",
+    "model_response": "Opened hardware can be refunded for cash within 90 days at any store location."
+  },
+  "detectors": [
+    {
+      "rule_id": "analyst-unsupported-claim",
+      "label": "Retrieved-doc support gap",
+      "severity": "medium",
+      "reason": "The cash refund, 90-day window, and any-store claim are not present in retrieved document spans span-retrieval-1 or span-retrieval-2, which only support store credit within 30 days with manager approval.",
+      "span_ids": [
+        "span-retrieval-1",
+        "span-retrieval-2",
+        "span-llm-response"
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "timestamp": "2026-05-18T15:20:01.000Z",
+      "event_type": "RETRIEVER",
+      "description": "Retriever returned policy documents limiting opened hardware refunds to store credit within 30 days with manager approval.",
+      "span_id": "span-retrieval-1"
+    },
+    {
+      "timestamp": "2026-05-18T15:20:02.000Z",
+      "event_type": "RETRIEVER",
+      "description": "A second retrieved document described receipt requirements but did not mention cash refunds or a 90-day window.",
+      "span_id": "span-retrieval-2"
+    },
+    {
+      "timestamp": "2026-05-18T15:20:04.000Z",
+      "event_type": "LLM",
+      "description": "Model response added refund terms unsupported by retrieved evidence.",
+      "span_id": "span-llm-response"
+    }
+  ],
+  "root_cause": "The model produced claims that were not grounded in retrieved documents, and the app did not verify final answer support against retrieval evidence.",
+  "prompt_patch": {
+    "original_prompt": "Answer the user's question using retrieved context.",
+    "proposed_prompt": "Answer only with claims supported by retrieved context. If retrieved documents do not support a policy detail, state that the available context does not specify it.",
+    "status": "proposed"
+  }
+}
