@@ -82,6 +82,28 @@ importers:
         specifier: ^3.23.0
         version: 3.25.76
 
+  services/evidence-watcher:
+    dependencies:
+      '@evidence-freezer/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.41
+      tsx:
+        specifier: ^4.10.0
+        version: 4.22.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.4.0
+        version: 1.6.1(@types/node@20.19.41)
+
   services/phoenix-mcp-adapter:
     dependencies:
       zod:
