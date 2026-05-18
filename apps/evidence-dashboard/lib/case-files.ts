@@ -26,6 +26,20 @@ const FirestoreListResponseSchema = z.object({
   documents: z.array(FirestoreDocumentSchema).optional(),
 });
 
+export const PatchReplayRecordSchema = z.object({
+  replay_id: z.string(),
+  case_id: z.string(),
+  actor: z.string(),
+  occurred_at: z.string(),
+  target_url: z.string(),
+  before_output: z.string(),
+  after_output: z.string(),
+  passed: z.boolean(),
+  reason: z.string(),
+}).strict();
+
+export type PatchReplayRecord = z.infer<typeof PatchReplayRecordSchema>;
+
 export async function listCaseFiles(): Promise<CaseFile[]> {
   if (process.env.EVIDENCE_DASHBOARD_CASE_SOURCE === 'firestore') {
     return listFirestoreCaseFiles();
@@ -37,6 +51,37 @@ export async function listCaseFiles(): Promise<CaseFile[]> {
 export async function getCaseFile(caseId: string): Promise<CaseFile | undefined> {
   const cases = await listCaseFiles();
   return cases.find((caseFile) => caseFile.case_id === caseId);
+}
+
+export async function listPatchReplays(caseId: string): Promise<PatchReplayRecord[]> {
+  if (process.env.EVIDENCE_DASHBOARD_CASE_SOURCE !== 'firestore') {
+    return [];
+  }
+
+  const projectId = requiredEnv('FIRESTORE_PROJECT_ID');
+  const databaseId = process.env.FIRESTORE_DATABASE_ID ?? '(default)';
+  const token = await firestoreAccessToken();
+  const url = firestoreDocumentsUrl(
+    projectId,
+    databaseId,
+    `case_files/${encodeURIComponent(caseId)}/patch_replays`,
+  );
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Firestore patch replay request failed with ${response.status}.`);
+  }
+
+  const parsed = FirestoreListResponseSchema.parse(await response.json());
+  return (parsed.documents ?? [])
+    .map((document) => PatchReplayRecordSchema.parse(decodeFirestoreValue({ mapValue: { fields: document.fields } })))
+    .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at));
 }
 
 export async function listFixtureCaseFiles(): Promise<CaseFile[]> {
@@ -106,9 +151,7 @@ async function listFirestoreCaseFiles(): Promise<CaseFile[]> {
   const projectId = requiredEnv('FIRESTORE_PROJECT_ID');
   const databaseId = process.env.FIRESTORE_DATABASE_ID ?? '(default)';
   const token = await firestoreAccessToken();
-  const url = new URL(
-    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/case_files`,
-  );
+  const url = firestoreDocumentsUrl(projectId, databaseId, 'case_files');
 
   const response = await fetch(url, {
     headers: {
@@ -125,6 +168,12 @@ async function listFirestoreCaseFiles(): Promise<CaseFile[]> {
   return (parsed.documents ?? [])
     .map((document) => CaseFileSchema.parse(decodeFirestoreValue({ mapValue: { fields: document.fields } })))
     .sort(sortNewestFirst);
+}
+
+function firestoreDocumentsUrl(projectId: string, databaseId: string, documentPath: string): URL {
+  return new URL(
+    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/${documentPath}`,
+  );
 }
 
 async function firestoreAccessToken(): Promise<string> {

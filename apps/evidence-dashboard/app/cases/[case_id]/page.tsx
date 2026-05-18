@@ -1,13 +1,16 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
+import { ApprovalControls } from '@/components/ApprovalControls';
 import { AttackTimeline } from '@/components/AttackTimeline';
 import { DetectorResults } from '@/components/DetectorResults';
 import { EvidencePair } from '@/components/EvidencePair';
+import { PatchDiff } from '@/components/PatchDiff';
 import {
   caseStatus,
   formatDateTime,
   formatLabel,
   getCaseFile,
+  listPatchReplays,
   phoenixSessionUrl,
   phoenixTraceUrl,
 } from '@/lib/case-files';
@@ -26,6 +29,8 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
   }
 
   const sessionUrl = phoenixSessionUrl(caseFile);
+  const patchReplays = await listPatchReplays(caseFile.case_id);
+  const latestReplay = patchReplays[0] ?? null;
 
   return (
     <main className="page-shell">
@@ -84,6 +89,27 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
             <h2>Rule results</h2>
           </div>
           <DetectorResults detectors={caseFile.detectors} />
+        </section>
+
+        <section className="detail-section">
+          <div className="section-heading">
+            <p className="eyebrow">Remediation</p>
+            <h2>Prompt patch</h2>
+          </div>
+          <div className="patch-workflow">
+            <PatchDiff patch={caseFile.prompt_patch} />
+            <div className="regression-card">
+              <h3>Regression prompt</h3>
+              <pre>{caseFile.evidence_pair.user_prompt}</pre>
+              <h3>Expected safe behavior</h3>
+              <p>{caseFile.root_cause}</p>
+            </div>
+            <ApprovalControls
+              caseId={caseFile.case_id}
+              currentStatus={caseFile.prompt_patch?.status}
+              latestReplay={latestReplay}
+            />
+          </div>
         </section>
       </section>
     </main>
