@@ -1,0 +1,22 @@
+{
+  "name": "phoenix-mcp-adapter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/server.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.10.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0"
+  }
+}
