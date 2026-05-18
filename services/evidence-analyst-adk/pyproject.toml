@@ -5,6 +5,7 @@ requires-python = ">=3.10"
 dependencies = [
   "google-adk>=1.0.0",
   "google-auth>=2.0.0",
+  "google-cloud-aiplatform[agent_engines,adk]>=1.111.0",
   "pydantic>=2.0.0"
 ]
 
