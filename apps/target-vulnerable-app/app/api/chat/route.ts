@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const body = await req.json();
-      const { messages, demoMode = true, riskSeed } = body;
+      const { messages, demoMode = true, riskSeed, promptPatch } = body;
       const lastUserMessage = messages[messages.length - 1];
 
       if (riskSeed) {
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
         llmSpan.setAttribute('llm.settings', JSON.stringify({ demoMode }));
         
         try {
-          const result = generateStubResponse(lastUserMessage.content, docs, demoMode);
+          const result = generateStubResponse(lastUserMessage.content, docs, demoMode, promptPatch);
           llmSpan.setAttribute(SemanticConventions.LLM_OUTPUT_MESSAGES, JSON.stringify([{
             message: { role: 'assistant', content: result }
           }]));

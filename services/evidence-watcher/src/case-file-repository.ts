@@ -13,6 +13,20 @@ export const AuditEventSchema = z.object({
 
 export type AuditEvent = z.infer<typeof AuditEventSchema>;
 
+export const PatchReplayRecordSchema = z.object({
+  replay_id: z.string(),
+  case_id: z.string(),
+  actor: z.string(),
+  occurred_at: z.string(),
+  target_url: z.string(),
+  before_output: z.string(),
+  after_output: z.string(),
+  passed: z.boolean(),
+  reason: z.string(),
+}).strict();
+
+export type PatchReplayRecord = z.infer<typeof PatchReplayRecordSchema>;
+
 export interface FirestoreLike {
   collection(path: string): CollectionReferenceLike;
 }
@@ -137,6 +151,42 @@ export class FirestoreCaseFileRepository {
     const snapshot = await this.caseRef(caseId).collection('audit_events').get();
     return snapshot.docs
       .map((document) => AuditEventSchema.parse(document.data()))
+      .sort((left, right) => left.occurred_at.localeCompare(right.occurred_at));
+  }
+
+  async recordPatchReplay(
+    caseId: string,
+    input: Omit<PatchReplayRecord, 'case_id' | 'replay_id'> & { replay_id?: string },
+  ): Promise<PatchReplayRecord> {
+    const replay = PatchReplayRecordSchema.parse({
+      ...input,
+      case_id: caseId,
+      replay_id: input.replay_id ?? createAuditEventId(caseId, 'patch_replay', input.occurred_at),
+    });
+
+    await this.caseRef(caseId)
+      .collection('patch_replays')
+      .doc(replay.replay_id)
+      .set(toFirestoreRecord(replay));
+
+    await this.appendAuditEvent(caseId, {
+      event_type: 'patch_replay_completed',
+      actor: replay.actor,
+      occurred_at: replay.occurred_at,
+      details: {
+        replay_id: replay.replay_id,
+        passed: replay.passed,
+        reason: replay.reason,
+      },
+    });
+
+    return replay;
+  }
+
+  async listPatchReplays(caseId: string): Promise<PatchReplayRecord[]> {
+    const snapshot = await this.caseRef(caseId).collection('patch_replays').get();
+    return snapshot.docs
+      .map((document) => PatchReplayRecordSchema.parse(document.data()))
       .sort((left, right) => left.occurred_at.localeCompare(right.occurred_at));
   }
 

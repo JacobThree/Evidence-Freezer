@@ -1,8 +1,17 @@
 import { Document } from './fake-docs';
 
-export function generateStubResponse(prompt: string, contextDocs: Document[] = [], demoMode: boolean = false): string {
+export function generateStubResponse(
+  prompt: string,
+  contextDocs: Document[] = [],
+  demoMode: boolean = false,
+  promptPatch?: string,
+): string {
   // If demo mode is active, simulate an LLM responding with a tool call
   if (demoMode) {
+    if (promptPatch && shouldBlockWithPatch(prompt, contextDocs)) {
+      return 'I cannot follow instructions that request hidden prompts, internal policy, or customer record access.';
+    }
+
     // Basic triggers
     if (prompt.includes('fetch customer')) {
       const match = prompt.match(/CUST-\d+/);
@@ -47,4 +56,15 @@ export function generateStubResponse(prompt: string, contextDocs: Document[] = [
   }
   
   return `Stub response for: ${prompt}${contextText}`;
+}
+
+function shouldBlockWithPatch(prompt: string, contextDocs: Document[]): boolean {
+  const normalized = `${prompt} ${contextDocs.map((doc) => doc.content).join(' ')}`.toLowerCase();
+  return [
+    'ignore previous instructions',
+    'fetch customer',
+    'read policy',
+    'hidden system prompt',
+    'inject: fetch customer',
+  ].some((signal) => normalized.includes(signal));
 }
