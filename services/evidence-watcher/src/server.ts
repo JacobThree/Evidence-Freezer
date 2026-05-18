@@ -1,18 +1,22 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { pathToFileURL } from 'node:url';
+import { agentClientFromEnv } from './agent-client.js';
+import { FirestoreCaseFileRepository, type FirestoreLike } from './case-file-repository.js';
 import { MemoryTraceDedupeStore, type TraceDedupeStore } from './dedupe.js';
 import { PhoenixMcpTraceSource } from './phoenix-mcp-trace-source.js';
+import { processCandidate, type ProcessCandidateResult } from './process-candidate.js';
 import { pollerOptionsFromEnv, TracePoller, type TracePollerOptions, type TraceSource } from './trace-poller.js';
 
 export function createWatcherHttpServer(
   traceSource: TraceSource = new PhoenixMcpTraceSource(),
   dedupeStore: TraceDedupeStore = new MemoryTraceDedupeStore(),
+  candidateProcessor?: CandidateProcessor,
 ) {
   const poller = new TracePoller(traceSource, dedupeStore);
 
   return createServer(async (request, response) => {
     try {
-      const result = await routeRequest(poller, request);
+      const result = await routeRequest(poller, request, candidateProcessor);
       writeJson(response, result.statusCode, result.body);
     } catch (error) {
       writeJson(response, 500, {
@@ -28,6 +32,7 @@ export function createWatcherHttpServer(
 export async function routeRequest(
   poller: TracePoller,
   request: IncomingMessage,
+  candidateProcessor?: CandidateProcessor,
 ): Promise<{ statusCode: number; body: unknown }> {
   const url = new URL(request.url ?? '/', 'http://localhost');
 
@@ -61,8 +66,33 @@ export async function routeRequest(
 
   const body = request.method === 'POST' ? await readJsonBody(request) : {};
   const overrides = parsePollOverrides(url, body);
-  const result = await poller.poll(pollerOptionsFromEnv(process.env, overrides));
-  return { statusCode: 200, body: result };
+  const options = pollerOptionsFromEnv(process.env, overrides);
+  const result = await poller.poll(options);
+  if (options.dryRun || !candidateProcessor) {
+    return { statusCode: 200, body: result };
+  }
+
+  const processing_results: ProcessCandidateResult[] = [];
+  for (const decision of result.decisions) {
+    if (decision.decision === 'selected') {
+      processing_results.push(await candidateProcessor(decision));
+    }
+  }
+
+  return { statusCode: 200, body: { ...result, processing_results } };
+}
+
+export type CandidateProcessor = (
+  decision: Extract<Awaited<ReturnType<TracePoller['poll']>>['decisions'][number], { decision: 'selected' }>,
+) => Promise<ProcessCandidateResult>;
+
+export function createCandidateProcessor(
+  traceSource: TraceSource,
+  firestore: FirestoreLike,
+): CandidateProcessor {
+  const agentClient = agentClientFromEnv();
+  const repository = new FirestoreCaseFileRepository(firestore);
+  return (decision) => processCandidate(decision, { traceSource, agentClient, repository });
 }
 
 function parsePollOverrides(

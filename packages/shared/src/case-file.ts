@@ -47,6 +47,7 @@ export const CaseFileSchema = z.object({
   case_id: z.string(),
   project_id: z.string(),
   trace_id: z.string(),
+  session_id: z.string().optional(),
   incident_type: z.enum([
     'prompt_injection',
     'rag_injection',

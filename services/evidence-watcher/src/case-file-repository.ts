@@ -140,7 +140,7 @@ export class FirestoreCaseFileRepository {
       .sort((left, right) => left.occurred_at.localeCompare(right.occurred_at));
   }
 
-  private async appendAuditEvent(
+  async recordAuditEvent(
     caseId: string,
     input: Omit<AuditEvent, 'case_id' | 'event_id'>,
   ): Promise<AuditEvent> {
@@ -156,6 +156,13 @@ export class FirestoreCaseFileRepository {
       .set(toFirestoreRecord(event));
 
     return event;
+  }
+
+  private async appendAuditEvent(
+    caseId: string,
+    input: Omit<AuditEvent, 'case_id' | 'event_id'>,
+  ): Promise<AuditEvent> {
+    return this.recordAuditEvent(caseId, input);
   }
 
   private caseRef(caseId: string): DocumentReferenceLike {
