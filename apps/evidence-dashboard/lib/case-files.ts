@@ -34,6 +34,11 @@ export async function listCaseFiles(): Promise<CaseFile[]> {
   return listFixtureCaseFiles();
 }
 
+export async function getCaseFile(caseId: string): Promise<CaseFile | undefined> {
+  const cases = await listCaseFiles();
+  return cases.find((caseFile) => caseFile.case_id === caseId);
+}
+
 export async function listFixtureCaseFiles(): Promise<CaseFile[]> {
   const fixturesDir = path.join(findWorkspaceRoot(), 'packages/shared/fixtures');
   const files = await readdir(fixturesDir);
@@ -84,6 +89,17 @@ export function formatDateTime(value: string): string {
     timeStyle: 'short',
     timeZone: 'UTC',
   }).format(new Date(value));
+}
+
+export function phoenixTraceUrl(caseFile: CaseFile): string {
+  return phoenixUrl(`/projects/${caseFile.project_id}/traces/${caseFile.trace_id}`);
+}
+
+export function phoenixSessionUrl(caseFile: CaseFile): string | undefined {
+  if (!caseFile.session_id) {
+    return undefined;
+  }
+  return phoenixUrl(`/projects/${caseFile.project_id}/sessions/${caseFile.session_id}`);
 }
 
 async function listFirestoreCaseFiles(): Promise<CaseFile[]> {
@@ -164,6 +180,11 @@ function requiredEnv(name: string): string {
     throw new Error(`${name} is required when EVIDENCE_DASHBOARD_CASE_SOURCE=firestore.`);
   }
   return value;
+}
+
+function phoenixUrl(pathname: string): string {
+  const baseUrl = (process.env.PHOENIX_HOST ?? 'http://localhost:6006').replace(/\/$/, '');
+  return `${baseUrl}${pathname}`;
 }
 
 function findWorkspaceRoot(): string {
