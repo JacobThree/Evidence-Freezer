@@ -46,18 +46,18 @@ docs/                         Setup, security boundaries, operations, and review
 ## Architecture
 
 ```mermaid
-flowchart LR
-  attacker["Attack prompt"] --> target["Target vulnerable app"]
-  target --> phoenix["Arize Phoenix traces"]
-  phoenix --> mcp["Phoenix MCP adapter"]
-  mcp --> analyst["Gemini analyst agent"]
-  watcher["Evidence watcher"] --> mcp
-  watcher --> analyst
-  analyst --> casefile["Structured Case File"]
-  casefile --> firestore["Firestore"]
-  firestore --> dashboard["Evidence dashboard"]
-  dashboard --> human["Human approval"]
-  human --> replay["Regression replay"]
+flowchart TD
+    attacker["Attack<br>prompt"] --> target["Target<br>vulnerable app"]
+    target --> phoenix["Arize Phoenix<br>traces"]
+    phoenix --> mcp["Phoenix MCP<br>adapter"]
+    mcp --> analyst["Gemini analyst<br>agent"]
+    watcher["Evidence<br>watcher"] --> mcp
+    watcher --> analyst
+    analyst --> casefile["Structured<br>Case File"]
+    casefile --> firestore["Firestore"]
+    firestore --> dashboard["Evidence<br>dashboard"]
+    dashboard --> human["Human<br>approval"]
+    human --> replay["Regression<br>replay"]
 ```
 
 ## Key Capabilities
