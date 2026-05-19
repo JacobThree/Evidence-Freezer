@@ -19,7 +19,7 @@ Evidence Freezer solves that workflow:
 5. Firestore stores a structured Case File.
 6. A Next.js dashboard lets a human review evidence and approve a test-only prompt patch.
 
-## Hackathon Fit
+## Hackathon
 
 - **Partner track:** Arize
 - **Partner integration:** Phoenix observability plus a Streamable HTTP Phoenix MCP adapter
@@ -127,7 +127,7 @@ See:
 
 ## Security Review Status
 
-The Task 27 review is documented in [docs/review.md](docs/review.md).
+Security tests is documented in [docs/review.md](docs/review.md).
 
 Latest local verification:
 
