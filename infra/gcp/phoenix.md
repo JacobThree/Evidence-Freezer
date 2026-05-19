@@ -1,6 +1,6 @@
 # Google Cloud Phoenix
 
-This file captures the deploy-time contract for the Evidence Freezer Phoenix service. See [docs/setup-phoenix.md](/Users/jacobsmythe/Evidence%20Freezer/docs/setup-phoenix.md) for operator steps and local fallback setup.
+This file captures the deploy-time contract for the Evidence Freezer Phoenix service. See [docs/setup-phoenix.md](../../docs/setup-phoenix.md) for operator steps and local fallback setup.
 
 ## Cloud Run Service
 
