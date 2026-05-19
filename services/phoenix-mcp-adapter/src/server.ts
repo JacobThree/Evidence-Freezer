@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { pathToFileURL } from 'node:url';
+import { failureClass, logEvent, requestContext, withLogContext, type LogContext } from '@evidence-freezer/shared';
+import { healthPayload } from './health.js';
 import { PhoenixHttpClient, type PhoenixClient } from './phoenix-client.js';
 import { callTool, mcpTools } from './tools.js';
 
@@ -25,9 +27,26 @@ const MCP_PROTOCOL_VERSION = '2025-03-26';
 
 export function createMcpHttpServer(client: PhoenixClient = new PhoenixHttpClient()) {
   return createServer(async (request, response) => {
+    const startedAt = Date.now();
+    const context = requestContext('phoenix-mcp-adapter', request.headers);
     try {
-      await routeRequest(client, request, response);
+      await routeRequest(client, request, response, context);
+      logEvent('info', withLogContext(context, {
+        event: 'http.request.completed',
+        method: request.method,
+        path: new URL(request.url ?? '/', 'http://localhost').pathname,
+        status_code: response.statusCode,
+        duration_ms: Date.now() - startedAt,
+      }));
     } catch (error) {
+      logEvent('error', withLogContext(context, {
+        event: 'http.request.failed',
+        method: request.method,
+        path: request.url,
+        failure_class: failureClass(error),
+        message: error instanceof Error ? error.message : 'Unknown server error.',
+        duration_ms: Date.now() - startedAt,
+      }));
       writeJson(response, 500, {
         error: {
           code: 'INTERNAL_SERVER_ERROR',
@@ -38,11 +57,16 @@ export function createMcpHttpServer(client: PhoenixClient = new PhoenixHttpClien
   });
 }
 
-async function routeRequest(client: PhoenixClient, request: IncomingMessage, response: ServerResponse): Promise<void> {
+async function routeRequest(
+  client: PhoenixClient,
+  request: IncomingMessage,
+  response: ServerResponse,
+  logContext: LogContext,
+): Promise<void> {
   const url = new URL(request.url ?? '/', 'http://localhost');
 
   if (request.method === 'GET' && url.pathname === '/healthz') {
-    writeJson(response, 200, { ok: true, service: 'phoenix-mcp-adapter' });
+    writeJson(response, 200, healthPayload());
     return;
   }
 
@@ -83,7 +107,9 @@ async function routeRequest(client: PhoenixClient, request: IncomingMessage, res
   }
 
   const body = await readJsonBody(request);
+  logMcpRequest(logContext, body);
   const rpcResponse = await handleJsonRpc(client, body);
+  logMcpResponse(logContext, body, rpcResponse);
   writeJson(response, 200, rpcResponse);
 }
 
@@ -204,11 +230,58 @@ function corsHeaders(): Record<string, string> {
   };
 }
 
+function logMcpRequest(context: LogContext, body: unknown): void {
+  if (!isJsonRpcRequest(body)) {
+    return;
+  }
+
+  const tool = readToolName(body.params);
+  logEvent('info', withLogContext(context, {
+    event: 'mcp.request.received',
+    method: body.method,
+    ...(tool ? { tool } : {}),
+    trace_id: readTraceId(body.params) ?? context.trace_id,
+  }));
+}
+
+function logMcpResponse(context: LogContext, body: unknown, response: JsonRpcResponse): void {
+  if (!isJsonRpcRequest(body)) {
+    return;
+  }
+
+  const tool = readToolName(body.params);
+  const isToolError = isRecord(response.result) && response.result.isError === true;
+  const level = response.error || isToolError ? 'warn' : 'info';
+  logEvent(level, withLogContext(context, {
+    event: 'mcp.request.completed',
+    method: body.method,
+    ...(tool ? { tool } : {}),
+    trace_id: readTraceId(body.params) ?? context.trace_id,
+    failure_class: response.error || isToolError ? 'MCP_TOOL_ERROR' : undefined,
+  }));
+}
+
+function readToolName(params: unknown): string | undefined {
+  return isRecord(params) && typeof params.name === 'string' ? params.name : undefined;
+}
+
+function readTraceId(params: unknown): string | undefined {
+  if (!isRecord(params) || !isRecord(params.arguments)) {
+    return undefined;
+  }
+
+  return typeof params.arguments.traceId === 'string' ? params.arguments.traceId : undefined;
+}
+
 const entrypointUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : undefined;
 
 if (import.meta.url === entrypointUrl) {
   const port = Number(process.env.PORT ?? 8080);
   createMcpHttpServer().listen(port, () => {
-    console.log(`phoenix-mcp-adapter listening on :${port}`);
+    logEvent('info', {
+      service: 'phoenix-mcp-adapter',
+      event: 'service.started',
+      port,
+    });
   });
 }

@@ -8,15 +8,18 @@ RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
-COPY services/phoenix-mcp-adapter/package.json services/phoenix-mcp-adapter/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY services/evidence-watcher/package.json services/evidence-watcher/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
-COPY services/phoenix-mcp-adapter services/phoenix-mcp-adapter
-RUN pnpm --filter phoenix-mcp-adapter build
+COPY packages/shared packages/shared
+COPY services/evidence-watcher services/evidence-watcher
+RUN pnpm --filter @evidence-freezer/shared build
+RUN pnpm --filter evidence-watcher build
 
 FROM base AS runner
 ENV NODE_ENV=production
 COPY --from=build /app /app
 EXPOSE 8080
-CMD ["pnpm", "--filter", "phoenix-mcp-adapter", "start"]
+CMD ["pnpm", "--filter", "evidence-watcher", "start"]

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryTraceDedupeStore } from '../src/dedupe.js';
 import { routeRequest } from '../src/server.js';
 import { TracePoller } from '../src/trace-poller.js';
@@ -11,14 +11,33 @@ afterEach(() => {
 });
 
 describe('watcher HTTP server', () => {
+  it('responds to /healthz', async () => {
+    const poller = new TracePoller(new SingleAttackTraceSource(), new MemoryTraceDedupeStore());
+    const response = await routeRequest(poller, {
+      method: 'GET',
+      url: '/healthz',
+      headers: {},
+    } as never);
+
+    expect(response).toEqual({
+      statusCode: 200,
+      body: expect.objectContaining({
+        ok: true,
+        service: 'evidence-watcher',
+      }),
+    });
+  });
+
   it('runs a dry /poll request with query-configured project and window', async () => {
     process.env.PHOENIX_PROJECT_NAME = 'phoenix-project';
     process.env.WATCHER_POLLING_WINDOW_MINUTES = '20';
     process.env.WATCHER_TRACE_LIMIT = '5';
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const poller = new TracePoller(new SingleAttackTraceSource(), new MemoryTraceDedupeStore());
     const response = await routeRequest(poller, {
       method: 'GET',
       url: '/poll?dryRun=true&projectId=evidence-freezer',
+      headers: { 'x-request-id': 'request-1' },
     } as never);
 
     expect(response.statusCode).toBe(200);
@@ -30,6 +49,18 @@ describe('watcher HTTP server', () => {
       scanned_count: 1,
       selected_count: 1,
     });
+    const pollLog = logSpy.mock.calls
+      .map(([line]) => JSON.parse(line) as Record<string, unknown>)
+      .find((entry) => entry.event === 'watcher.poll.completed');
+    expect(pollLog).toMatchObject({
+      request_id: 'request-1',
+      project_id: 'evidence-freezer',
+      scanned_count: 1,
+      candidates_found: 1,
+      cases_created: 0,
+      error_count: 0,
+    });
+    logSpy.mockRestore();
   });
 });
 

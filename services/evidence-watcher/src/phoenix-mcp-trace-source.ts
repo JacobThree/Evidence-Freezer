@@ -7,8 +7,14 @@ type McpToolResult =
 
 export type PhoenixMcpTraceSourceConfig = {
   endpoint: string;
+  auth?: PhoenixMcpAuthConfig;
   fetchImpl?: typeof fetch;
 };
+
+export type PhoenixMcpAuthConfig =
+  | { mode: 'none' }
+  | { mode: 'bearer'; token: string }
+  | { mode: 'google_id_token'; audience?: string };
 
 export class PhoenixMcpTraceSource implements TraceSource {
   private readonly endpoint: string;
@@ -16,8 +22,11 @@ export class PhoenixMcpTraceSource implements TraceSource {
 
   constructor(config: PhoenixMcpTraceSourceConfig = configFromEnv()) {
     this.endpoint = config.endpoint;
+    this.auth = config.auth ?? { mode: 'none' };
     this.fetchImpl = config.fetchImpl ?? fetch;
   }
+
+  private readonly auth: PhoenixMcpAuthConfig;
 
   async listTraces(options: ListTracesOptions): Promise<TraceSummary[]> {
     const result = await this.callTool('list-traces', {
@@ -44,7 +53,10 @@ export class PhoenixMcpTraceSource implements TraceSource {
   private async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     const response = await this.fetchImpl(this.endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(await this.authHeader()),
+      },
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: `${name}-${Date.now()}`,
@@ -81,11 +93,63 @@ export class PhoenixMcpTraceSource implements TraceSource {
 
     return toolResult.data;
   }
+
+  private async authHeader(): Promise<Record<string, string>> {
+    if (this.auth.mode === 'none') {
+      return {};
+    }
+
+    if (this.auth.mode === 'bearer') {
+      return { authorization: `Bearer ${this.auth.token}` };
+    }
+
+    const token = await this.fetchIdentityToken(this.auth.audience ?? cloudRunAudience(this.endpoint));
+    return { authorization: `Bearer ${token}` };
+  }
+
+  private async fetchIdentityToken(audience: string): Promise<string> {
+    const url = new URL(
+      'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity',
+    );
+    url.searchParams.set('audience', audience);
+
+    const response = await this.fetchImpl(url, {
+      headers: { 'Metadata-Flavor': 'Google' },
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      throw new Error(`Metadata identity token request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.text();
+  }
 }
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PhoenixMcpTraceSourceConfig {
   const endpoint = env.PHOENIX_MCP_ENDPOINT ?? env.PHOENIX_MCP_URL ?? 'http://localhost:8080/mcp';
-  return { endpoint };
+  const authMode = env.PHOENIX_MCP_AUTH_MODE ?? 'none';
+
+  if (authMode === 'bearer') {
+    if (!env.PHOENIX_MCP_BEARER_TOKEN) {
+      throw new Error('PHOENIX_MCP_BEARER_TOKEN is required when PHOENIX_MCP_AUTH_MODE=bearer.');
+    }
+    return { endpoint, auth: { mode: 'bearer', token: env.PHOENIX_MCP_BEARER_TOKEN } };
+  }
+
+  if (authMode === 'google_id_token') {
+    return { endpoint, auth: { mode: 'google_id_token', audience: env.PHOENIX_MCP_AUDIENCE } };
+  }
+
+  if (authMode !== 'none') {
+    throw new Error('PHOENIX_MCP_AUTH_MODE must be none, bearer, or google_id_token.');
+  }
+
+  return { endpoint, auth: { mode: 'none' } };
+}
+
+function cloudRunAudience(endpoint: string): string {
+  const url = new URL(endpoint);
+  return url.origin;
 }
 
 function isTraceSummary(value: unknown): value is TraceSummary {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { healthPayload } from '../src/health.js';
 import { handleJsonRpc } from '../src/server.js';
 import { callTool, mcpTools } from '../src/tools.js';
 import type {
@@ -158,6 +159,14 @@ describe('Phoenix MCP tools', () => {
 });
 
 describe('Streamable HTTP JSON-RPC handler', () => {
+  it('has a /healthz payload for Cloud Run checks', () => {
+    expect(healthPayload()).toMatchObject({
+      ok: true,
+      service: 'phoenix-mcp-adapter',
+      dependencies: { phoenix: 'configured_by_env' },
+    });
+  });
+
   it('responds to initialize and tools/list', async () => {
     const client = new FakePhoenixClient();
 

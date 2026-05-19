@@ -8,15 +8,16 @@ RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
-COPY services/phoenix-mcp-adapter/package.json services/phoenix-mcp-adapter/package.json
+COPY apps/target-vulnerable-app/package.json apps/target-vulnerable-app/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
-COPY services/phoenix-mcp-adapter services/phoenix-mcp-adapter
-RUN pnpm --filter phoenix-mcp-adapter build
+COPY apps/target-vulnerable-app apps/target-vulnerable-app
+RUN pnpm --filter target-vulnerable-app build
 
 FROM base AS runner
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
 COPY --from=build /app /app
 EXPOSE 8080
-CMD ["pnpm", "--filter", "phoenix-mcp-adapter", "start"]
+CMD ["pnpm", "--filter", "target-vulnerable-app", "start", "-p", "8080"]

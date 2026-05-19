@@ -20,10 +20,13 @@ gcloud artifacts repositories create evidence-freezer \
   --location=us-east4 \
   --project=PROJECT_ID
 
-gcloud builds submit \
-  --tag us-east4-docker.pkg.dev/PROJECT_ID/evidence-freezer/phoenix-mcp-adapter:latest \
-  --file services/phoenix-mcp-adapter/Dockerfile \
+gcloud auth configure-docker us-east4-docker.pkg.dev
+
+docker build \
+  -f services/phoenix-mcp-adapter/Dockerfile \
+  -t us-east4-docker.pkg.dev/PROJECT_ID/evidence-freezer/phoenix-mcp-adapter:latest \
   .
+docker push us-east4-docker.pkg.dev/PROJECT_ID/evidence-freezer/phoenix-mcp-adapter:latest
 
 gcloud run deploy phoenix-mcp-adapter \
   --image us-east4-docker.pkg.dev/PROJECT_ID/evidence-freezer/phoenix-mcp-adapter:latest \

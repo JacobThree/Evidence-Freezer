@@ -1,8 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { pathToFileURL } from 'node:url';
+import { failureClass, logEvent, requestContext, withLogContext, type LogContext } from '@evidence-freezer/shared';
 import { agentClientFromEnv } from './agent-client.js';
 import { FirestoreCaseFileRepository, type FirestoreLike } from './case-file-repository.js';
 import { MemoryTraceDedupeStore, type TraceDedupeStore } from './dedupe.js';
+import { healthPayload } from './health.js';
 import { approvePatchForTest, parsePatchStatusBody, updatePatchStatus, type OperatorContext } from './patch-actions.js';
 import { PhoenixMcpTraceSource } from './phoenix-mcp-trace-source.js';
 import { processCandidate, type ProcessCandidateResult } from './process-candidate.js';
@@ -18,10 +20,27 @@ export function createWatcherHttpServer(
   const poller = new TracePoller(traceSource, dedupeStore);
 
   return createServer(async (request, response) => {
+    const startedAt = Date.now();
+    const context = requestContext('evidence-watcher', request.headers);
     try {
-      const result = await routeRequest(poller, request, candidateProcessor, patchEndpoints);
+      const result = await routeRequest(poller, request, candidateProcessor, patchEndpoints, context);
       writeJson(response, result.statusCode, result.body);
+      logEvent('info', withLogContext(context, {
+        event: 'http.request.completed',
+        method: request.method,
+        path: new URL(request.url ?? '/', 'http://localhost').pathname,
+        status_code: result.statusCode,
+        duration_ms: Date.now() - startedAt,
+      }));
     } catch (error) {
+      logEvent('error', withLogContext(context, {
+        event: 'http.request.failed',
+        method: request.method,
+        path: request.url,
+        failure_class: failureClass(error),
+        message: error instanceof Error ? error.message : 'Unknown watcher error.',
+        duration_ms: Date.now() - startedAt,
+      }));
       writeJson(response, 500, {
         error: {
           code: 'INTERNAL_SERVER_ERROR',
@@ -37,16 +56,18 @@ export async function routeRequest(
   request: IncomingMessage,
   candidateProcessor?: CandidateProcessor,
   patchEndpoints?: PatchEndpointDependencies,
+  logContext?: LogContext,
 ): Promise<{ statusCode: number; body: unknown }> {
   const url = new URL(request.url ?? '/', 'http://localhost');
+  const context = logContext ?? requestContext('evidence-watcher', request.headers);
 
   if (request.method === 'GET' && url.pathname === '/healthz') {
-    return { statusCode: 200, body: { ok: true, service: 'evidence-watcher' } };
+    return { statusCode: 200, body: healthPayload() };
   }
 
   const patchRoute = parsePatchRoute(url);
   if (patchRoute) {
-    return routePatchRequest(request, patchRoute, patchEndpoints);
+    return routePatchRequest(request, patchRoute, patchEndpoints, context);
   }
 
   if (url.pathname !== '/poll') {
@@ -76,19 +97,33 @@ export async function routeRequest(
   const body = request.method === 'POST' ? await readJsonBody(request) : {};
   const overrides = parsePollOverrides(url, body);
   const options = pollerOptionsFromEnv(process.env, overrides);
-  const result = await poller.poll(options);
-  if (options.dryRun || !candidateProcessor) {
-    return { statusCode: 200, body: result };
-  }
-
-  const processing_results: ProcessCandidateResult[] = [];
-  for (const decision of result.decisions) {
-    if (decision.decision === 'selected') {
-      processing_results.push(await candidateProcessor(decision));
+  try {
+    const result = await poller.poll(options);
+    if (options.dryRun || !candidateProcessor) {
+      logWatcherPoll(context, result, 0, 0);
+      return { statusCode: 200, body: result };
     }
-  }
 
-  return { statusCode: 200, body: { ...result, processing_results } };
+    const processing_results: ProcessCandidateResult[] = [];
+    for (const decision of result.decisions) {
+      if (decision.decision === 'selected') {
+        processing_results.push(await candidateProcessor(decision));
+      }
+    }
+
+    const casesCreated = processing_results.filter((item) => item.status === 'created').length;
+    const errors = processing_results.filter((item) => item.status !== 'created').length;
+    logWatcherPoll(context, result, casesCreated, errors);
+    return { statusCode: 200, body: { ...result, processing_results } };
+  } catch (error) {
+    logEvent('error', withLogContext(context, {
+      event: 'watcher.poll.failed',
+      project_id: options.projectId,
+      failure_class: failureClass(error),
+      message: error instanceof Error ? error.message : 'Watcher polling failed.',
+    }));
+    throw error;
+  }
 }
 
 export type CandidateProcessor = (
@@ -119,6 +154,7 @@ async function routePatchRequest(
   request: IncomingMessage,
   route: PatchRoute,
   dependencies: PatchEndpointDependencies | undefined,
+  logContext: LogContext,
 ): Promise<{ statusCode: number; body: unknown }> {
   if (request.method !== 'POST') {
     return {
@@ -164,10 +200,41 @@ async function routePatchRequest(
         targetBaseUrl: dependencies.targetBaseUrl ?? targetAppBaseUrlFromEnv(dependencies.env),
       });
 
+    logEvent('info', withLogContext(logContext, {
+      event: 'patch.action.completed',
+      case_id: route.caseId,
+      action: route.action,
+      actor: auth.operator.actor,
+    }));
     return { statusCode: 200, body: result };
   } catch (error) {
+    logEvent('warn', withLogContext(logContext, {
+      event: 'patch.action.failed',
+      case_id: route.caseId,
+      action: route.action,
+      failure_class: failureClass(error),
+      message: error instanceof Error ? error.message : 'Patch action failed.',
+    }));
     return mapPatchError(error);
   }
+}
+
+function logWatcherPoll(
+  context: LogContext,
+  result: Awaited<ReturnType<TracePoller['poll']>>,
+  casesCreated: number,
+  errors: number,
+): void {
+  logEvent('info', withLogContext(context, {
+    event: 'watcher.poll.completed',
+    project_id: result.project_id,
+    project_name: result.project_name,
+    dry_run: result.dry_run,
+    scanned_count: result.scanned_count,
+    candidates_found: result.selected_count,
+    cases_created: casesCreated,
+    error_count: errors,
+  }));
 }
 
 function parsePatchRoute(url: URL): PatchRoute | null {
@@ -325,6 +392,10 @@ const entrypointUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : un
 if (import.meta.url === entrypointUrl) {
   const port = Number(process.env.PORT ?? 8080);
   createWatcherHttpServer().listen(port, () => {
-    console.log(`evidence-watcher listening on :${port}`);
+    logEvent('info', {
+      service: 'evidence-watcher',
+      event: 'service.started',
+      port,
+    });
   });
 }

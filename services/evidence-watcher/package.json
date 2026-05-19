@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts",
     "test": "vitest run"
   },
   "dependencies": {

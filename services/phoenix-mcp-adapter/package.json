@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@evidence-freezer/shared": "workspace:*",
     "zod": "^3.23.0"
   },
   "devDependencies": {

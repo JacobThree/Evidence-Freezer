@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { failureClass, logEvent } from '@evidence-freezer/shared';
 import { generateStubResponse } from '../../../lib/model-client';
 import { retrieveDocuments } from '../../../lib/retriever';
 import { riskyTools } from '../../../lib/risky-tools';
@@ -8,6 +9,8 @@ import { getSessionId } from '../../../lib/session';
 export async function POST(req: NextRequest) {
   const tracer = getTracer();
   const sessionId = getSessionId();
+  const requestId = req.headers.get('x-request-id') ?? undefined;
+  const startedAt = Date.now();
 
   return await tracer.startActiveSpan('chat_request', async (rootSpan) => {
     rootSpan.setAttribute(SemanticConventions.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKind.CHAIN);
@@ -101,6 +104,17 @@ export async function POST(req: NextRequest) {
       const traceId = rootSpan.spanContext().traceId;
       
       rootSpan.setAttribute(SemanticConventions.OUTPUT_VALUE, JSON.stringify({ message: { role: 'assistant', content: responseContent }}));
+      logEvent('info', {
+        service: 'target-vulnerable-app',
+        event: 'chat.request.completed',
+        request_id: requestId,
+        trace_id: traceId,
+        session_id: sessionId,
+        demo_mode: demoMode,
+        risk_seed: riskSeed,
+        retrieved_document_count: docs.length,
+        duration_ms: Date.now() - startedAt,
+      });
 
       return NextResponse.json({ 
         message: { role: 'assistant', content: responseContent },
@@ -110,6 +124,16 @@ export async function POST(req: NextRequest) {
       });
     } catch (error: any) {
       rootSpan.recordException(error);
+      logEvent('error', {
+        service: 'target-vulnerable-app',
+        event: 'chat.request.failed',
+        request_id: requestId,
+        trace_id: rootSpan.spanContext().traceId,
+        session_id: sessionId,
+        failure_class: failureClass(error),
+        message: error instanceof Error ? error.message : 'Failed to process request.',
+        duration_ms: Date.now() - startedAt,
+      });
       return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
     } finally {
       rootSpan.end();

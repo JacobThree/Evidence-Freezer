@@ -66,6 +66,9 @@ importers:
       '@arizeai/openinference-semantic-conventions':
         specifier: ^2.3.0
         version: 2.3.0
+      '@evidence-freezer/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -143,6 +146,9 @@ importers:
 
   services/phoenix-mcp-adapter:
     dependencies:
+      '@evidence-freezer/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       zod:
         specifier: ^3.23.0
         version: 3.25.76
