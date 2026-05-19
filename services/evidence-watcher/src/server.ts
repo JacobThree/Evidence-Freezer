@@ -1,9 +1,16 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { failureClass, logEvent, requestContext, withLogContext, type LogContext } from '@evidence-freezer/shared';
+import {
+  failureClass,
+  logEvent,
+  requestContext,
+  withLogContext,
+  type LogContext,
+} from '@evidence-freezer/shared/src/logging.ts';
 import { agentClientFromEnv } from './agent-client.js';
 import { FirestoreCaseFileRepository, type FirestoreLike } from './case-file-repository.js';
-import { MemoryTraceDedupeStore, type TraceDedupeStore } from './dedupe.js';
+import { FirestoreTraceDedupeStore, MemoryTraceDedupeStore, type TraceDedupeStore } from './dedupe.js';
+import { firestoreFromEnv } from './firestore-rest.js';
 import { healthPayload } from './health.js';
 import { approvePatchForTest, parsePatchStatusBody, updatePatchStatus, type OperatorContext } from './patch-actions.js';
 import { PhoenixMcpTraceSource } from './phoenix-mcp-trace-source.js';
@@ -391,7 +398,19 @@ const entrypointUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : un
 
 if (import.meta.url === entrypointUrl) {
   const port = Number(process.env.PORT ?? 8080);
-  createWatcherHttpServer().listen(port, () => {
+  const traceSource = new PhoenixMcpTraceSource();
+  const firestore = firestoreFromEnv();
+  const repository = new FirestoreCaseFileRepository(firestore);
+  createWatcherHttpServer(
+    traceSource,
+    new FirestoreTraceDedupeStore(firestore),
+    createCandidateProcessor(traceSource, firestore),
+    {
+      repository,
+      replayClient: replayClientFromEnv(),
+      targetBaseUrl: targetAppBaseUrlFromEnv(),
+    },
+  ).listen(port, () => {
     logEvent('info', {
       service: 'evidence-watcher',
       event: 'service.started',

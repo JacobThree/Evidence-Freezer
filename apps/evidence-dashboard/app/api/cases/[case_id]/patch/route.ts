@@ -63,6 +63,12 @@ export async function POST(request: Request, context: PatchRouteContext): Promis
   if (process.env.WATCHER_OPERATOR_TOKEN) {
     headers.set('authorization', `Bearer ${process.env.WATCHER_OPERATOR_TOKEN}`);
   }
+  if (process.env.EVIDENCE_WATCHER_AUTH_MODE === 'google_id_token') {
+    headers.set(
+      'x-serverless-authorization',
+      `Bearer ${await googleIdentityToken(process.env.EVIDENCE_WATCHER_AUDIENCE ?? watcherBaseUrl)}`,
+    );
+  }
 
   try {
     const response = await fetch(watcherUrl, {
@@ -100,4 +106,20 @@ export async function POST(request: Request, context: PatchRouteContext): Promis
       { status: 502 },
     );
   }
+}
+
+async function googleIdentityToken(audience: string): Promise<string> {
+  const url = new URL('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity');
+  url.searchParams.set('audience', audience);
+  url.searchParams.set('format', 'full');
+
+  const response = await fetch(url, {
+    headers: { 'Metadata-Flavor': 'Google' },
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`Watcher identity token request failed with ${response.status}.`);
+  }
+
+  return response.text();
 }

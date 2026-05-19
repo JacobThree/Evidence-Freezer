@@ -1,4 +1,4 @@
-import { CaseFileSchema, type CaseFile } from '@evidence-freezer/shared';
+import { CaseFileSchema, type CaseFile } from '@evidence-freezer/shared/src/case-file.ts';
 import { z } from 'zod';
 import { createCaseId } from './case-id.js';
 import type { FirestoreCaseFileRepository } from './case-file-repository.js';

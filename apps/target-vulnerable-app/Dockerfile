@@ -8,11 +8,14 @@ RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY packages/shared packages/shared
 COPY apps/target-vulnerable-app/package.json apps/target-vulnerable-app/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
+COPY packages/shared packages/shared
 COPY apps/target-vulnerable-app apps/target-vulnerable-app
+RUN pnpm --filter @evidence-freezer/shared build
 RUN pnpm --filter target-vulnerable-app build
 
 FROM base AS runner

@@ -1,6 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { failureClass, logEvent, requestContext, withLogContext, type LogContext } from '@evidence-freezer/shared';
+import {
+  failureClass,
+  logEvent,
+  requestContext,
+  withLogContext,
+  type LogContext,
+} from '@evidence-freezer/shared/src/logging.ts';
 import { healthPayload } from './health.js';
 import { PhoenixHttpClient, type PhoenixClient } from './phoenix-client.js';
 import { callTool, enabledMcpTools, toolOptionsFromEnv } from './tools.js';

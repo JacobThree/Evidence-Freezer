@@ -1,4 +1,4 @@
-import { CaseFileSchema, type CaseFile, type PatchState } from '@evidence-freezer/shared';
+import { CaseFileSchema, type CaseFile, type PatchState } from '@evidence-freezer/shared/src/case-file.ts';
 import { z } from 'zod';
 import { createAuditEventId, createCaseId } from './case-id.js';
 

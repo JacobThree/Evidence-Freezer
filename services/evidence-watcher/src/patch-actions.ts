@@ -1,4 +1,4 @@
-import { PatchStateSchema, type CaseFile, type PatchState } from '@evidence-freezer/shared';
+import { PatchStateSchema, type CaseFile, type PatchState } from '@evidence-freezer/shared/src/case-file.ts';
 import type { FirestoreCaseFileRepository, PatchReplayRecord } from './case-file-repository.js';
 import type { ReplayClient } from './replay-client.js';
 

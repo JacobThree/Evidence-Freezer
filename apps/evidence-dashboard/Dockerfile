@@ -8,7 +8,7 @@ RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
-COPY packages/shared/package.json packages/shared/package.json
+COPY packages/shared packages/shared
 COPY apps/evidence-dashboard/package.json apps/evidence-dashboard/package.json
 RUN pnpm install --frozen-lockfile
 

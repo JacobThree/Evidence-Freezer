@@ -1,4 +1,4 @@
-import type { DetectorResult } from '@evidence-freezer/shared';
+import type { DetectorResult } from '@evidence-freezer/shared/src/case-file.ts';
 
 export type DetectorSeverity = DetectorResult['severity'];
 

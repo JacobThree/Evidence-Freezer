@@ -1,4 +1,4 @@
-import type { CaseFile } from '@evidence-freezer/shared';
+import type { CaseFile } from '@evidence-freezer/shared/src/case-file.ts';
 
 export interface ReplayRequest {
   caseFile: CaseFile;
