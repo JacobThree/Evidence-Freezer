@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@arizeai/phoenix-client": "^6.10.0",
     "@evidence-freezer/shared": "workspace:*",
     "zod": "^3.23.0"
   },

@@ -1,3 +1,6 @@
+import { createClient, type PhoenixClient as PhoenixApiClient } from '@arizeai/phoenix-client';
+import { getSpans } from '@arizeai/phoenix-client/spans';
+import { getTraces } from '@arizeai/phoenix-client/traces';
 import { z } from 'zod';
 
 export type PhoenixTraceSummary = {
@@ -99,41 +102,43 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PhoenixClie
 
 export class PhoenixHttpClient implements PhoenixClient {
   readonly #config: PhoenixClientConfig;
+  readonly #client: PhoenixApiClient;
 
   constructor(config: PhoenixClientConfig = configFromEnv()) {
     this.#config = {
       ...config,
       host: config.host.replace(/\/$/, ''),
     };
+    this.#client = createClient({
+      options: {
+        baseUrl: this.#config.host,
+        headers: this.#config.apiKey ? { authorization: `Bearer ${this.#config.apiKey}` } : {},
+      },
+    });
   }
 
   async listTraces(options: ListTracesOptions): Promise<PhoenixTraceSummary[]> {
-    const query = new URLSearchParams();
-    query.set('project_name', options.projectName ?? this.#config.projectName);
-    query.set('limit', String(options.limit ?? 20));
-    if (options.sessionId) {
-      query.set('session_id', options.sessionId);
-    }
-
-    const data = await this.#fetchJson(`/v1/traces?${query.toString()}`);
-    const traces = readArray(data, ['traces', 'data', 'items']);
-    return traces.map((trace) => normalizeTraceSummary(trace));
+    const result = await getTraces({
+      client: this.#client,
+      project: { projectName: options.projectName ?? this.#config.projectName },
+      limit: options.limit ?? 20,
+      sessionId: options.sessionId,
+    });
+    return result.traces.filter(isRecord).map((trace) => normalizeTraceSummary(trace));
   }
 
   async getTrace(traceId: string): Promise<PhoenixTrace> {
-    const query = new URLSearchParams({ project_name: this.#config.projectName });
-    const data = await this.#fetchJson(`/v1/traces/${encodeURIComponent(traceId)}?${query.toString()}`);
-    const rawTrace = readObject(data, ['trace', 'data']) ?? toRecord(data);
-    return normalizeTrace(rawTrace, traceId);
+    const spans = await this.getSpans(traceId);
+    return normalizeTrace({ id: traceId, spans }, traceId);
   }
 
   async getSpans(traceId: string): Promise<PhoenixSpan[]> {
-    const query = new URLSearchParams({
-      project_name: this.#config.projectName,
-      trace_id: traceId,
+    const result = await getSpans({
+      client: this.#client,
+      project: { projectName: this.#config.projectName },
+      traceIds: [traceId],
     });
-    const data = await this.#fetchJson(`/v1/spans?${query.toString()}`);
-    const spans = readArray(data, ['spans', 'data', 'items']);
+    const spans = result.spans.filter(isRecord);
     return spans.map((span) => normalizeSpan(span, traceId));
   }
 
@@ -228,10 +233,11 @@ function normalizeTrace(raw: Record<string, unknown>, fallbackTraceId: string): 
 }
 
 function normalizeSpan(raw: Record<string, unknown>, fallbackTraceId: string): PhoenixSpan {
+  const context = readRecord(raw, ['context']);
   return {
-    spanId: readString(raw, ['span_id', 'spanId', 'id']) ?? 'unknown-span',
-    traceId: readString(raw, ['trace_id', 'traceId']) ?? fallbackTraceId,
-    parentSpanId: readString(raw, ['parent_span_id', 'parentSpanId']),
+    spanId: readString(raw, ['span_id', 'spanId', 'id']) ?? (context ? readString(context, ['span_id', 'spanId']) : undefined) ?? 'unknown-span',
+    traceId: readString(raw, ['trace_id', 'traceId']) ?? (context ? readString(context, ['trace_id', 'traceId']) : undefined) ?? fallbackTraceId,
+    parentSpanId: readString(raw, ['parent_span_id', 'parentSpanId', 'parent_id', 'parentId']),
     name: readString(raw, ['name']) ?? 'unknown',
     spanKind: readString(raw, ['span_kind', 'spanKind', 'kind']),
     startTime: readString(raw, ['start_time', 'startTime']),
