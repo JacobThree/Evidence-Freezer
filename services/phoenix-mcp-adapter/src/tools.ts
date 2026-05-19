@@ -23,6 +23,10 @@ export type StructuredToolError = {
   details?: Record<string, unknown>;
 };
 
+export type ToolRuntimeOptions = {
+  enablePromptWrites?: boolean;
+};
+
 const TraceIdSchema = z
   .string()
   .min(8)
@@ -61,7 +65,7 @@ const SavePromptPatchInputSchema = z.object({
   regressionPrompt: z.string().optional(),
 });
 
-export const mcpTools: McpTool[] = [
+const readOnlyMcpTools: McpTool[] = [
   {
     name: 'list-traces',
     description: 'List recent Phoenix traces for the configured project, optionally filtered by session.',
@@ -120,9 +124,12 @@ export const mcpTools: McpTool[] = [
       additionalProperties: false,
     },
   },
+];
+
+const promptWriteMcpTools: McpTool[] = [
   {
     name: 'save-prompt-patch',
-    description: 'Save a proposed prompt patch draft when prompt patching is enabled.',
+    description: 'Save a proposed prompt patch draft when prompt write tools are explicitly enabled.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -137,7 +144,24 @@ export const mcpTools: McpTool[] = [
   },
 ];
 
-export async function callTool(client: PhoenixClient, name: string, input: unknown): Promise<ToolResult> {
+export const mcpTools: McpTool[] = enabledMcpTools({ enablePromptWrites: false });
+
+export function enabledMcpTools(options: ToolRuntimeOptions = toolOptionsFromEnv()): McpTool[] {
+  return options.enablePromptWrites ? [...readOnlyMcpTools, ...promptWriteMcpTools] : readOnlyMcpTools;
+}
+
+export function toolOptionsFromEnv(env: NodeJS.ProcessEnv = process.env): ToolRuntimeOptions {
+  return {
+    enablePromptWrites: env.PHOENIX_MCP_ENABLE_PROMPT_WRITES === 'true',
+  };
+}
+
+export async function callTool(
+  client: PhoenixClient,
+  name: string,
+  input: unknown,
+  options: ToolRuntimeOptions = toolOptionsFromEnv(),
+): Promise<ToolResult> {
   try {
     switch (name) {
       case 'list-traces': {
@@ -169,6 +193,12 @@ export async function callTool(client: PhoenixClient, name: string, input: unkno
         return ok(name, draftPromptPatch(parsed));
       }
       case 'save-prompt-patch': {
+        if (!options.enablePromptWrites) {
+          throw new ToolInputError(
+            'PROMPT_WRITE_TOOL_DISABLED',
+            'Prompt write tools are disabled. Set PHOENIX_MCP_ENABLE_PROMPT_WRITES=true only for a human-gated workflow.',
+          );
+        }
         const parsed = SavePromptPatchInputSchema.parse(input ?? {});
         return ok(name, await client.savePromptPatchDraft(parsed));
       }

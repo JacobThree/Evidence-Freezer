@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { failureClass, logEvent, requestContext, withLogContext, type LogContext } from '@evidence-freezer/shared';
 import { healthPayload } from './health.js';
 import { PhoenixHttpClient, type PhoenixClient } from './phoenix-client.js';
-import { callTool, mcpTools } from './tools.js';
+import { callTool, enabledMcpTools, toolOptionsFromEnv } from './tools.js';
 
 type JsonRpcRequest = {
   jsonrpc?: string;
@@ -91,7 +91,7 @@ async function routeRequest(
       name: 'phoenix-mcp-adapter',
       endpoint: '/mcp',
       protocolVersion: MCP_PROTOCOL_VERSION,
-      tools: mcpTools.map((tool) => tool.name),
+      tools: enabledMcpTools().map((tool) => tool.name),
     });
     return;
   }
@@ -133,7 +133,7 @@ export async function handleJsonRpc(client: PhoenixClient, body: unknown): Promi
         },
       });
     case 'tools/list':
-      return jsonRpcResult(id, { tools: mcpTools });
+      return jsonRpcResult(id, { tools: enabledMcpTools() });
     case 'tools/call':
       return jsonRpcResult(id, await handleToolCall(client, body.params));
     default:
@@ -160,7 +160,7 @@ async function handleToolCall(client: PhoenixClient, params: unknown): Promise<u
     };
   }
 
-  const result = await callTool(client, params.name, params.arguments);
+  const result = await callTool(client, params.name, params.arguments, toolOptionsFromEnv());
   return {
     isError: !result.ok,
     content: [

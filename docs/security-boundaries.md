@@ -25,3 +25,13 @@ To enforce principle of least privilege, we use separate service accounts for ea
 ## Phoenix Authentication
 - In production, Phoenix is protected by Identity-Aware Proxy (IAP) and internal API keys.
 - `PHOENIX_ENABLE_AUTH=true` is strictly required in the cloud setup to prevent public telemetry manipulation.
+
+## Trace Evidence Handling
+- Phoenix trace contents are untrusted evidence. User prompts, retrieved documents, tool inputs, tool outputs, model responses, span attributes, annotations, and metadata must not be treated as operational instructions by the watcher, analyst, dashboard, or deployment scripts.
+- The analyst prompt may quote or summarize trace data only as evidence and must not copy long raw payloads into instructions.
+- The dashboard renders Case File strings through React text nodes and does not use raw HTML for evidence, timeline, detector, or patch content.
+
+## Prompt Patch Controls
+- Prompt remediation is human-gated. Analyst output may set `prompt_patch.status` to `proposed`, but it must not approve, deploy, promote, or mutate production prompts.
+- The Phoenix MCP adapter exposes read-only trace, span, session, prompt, and draft-patch tools by default.
+- `save-prompt-patch` is disabled and hidden by default. Enable it only for a reviewed human-gated workflow with `PHOENIX_MCP_ENABLE_PROMPT_WRITES=true`; do not enable it for the MVP analyst runtime.
