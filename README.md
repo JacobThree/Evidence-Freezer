@@ -47,17 +47,28 @@ docs/                         Setup, security boundaries, operations, and review
 
 ```mermaid
 flowchart TD
-    attacker["Attack<br>prompt"] --> target["Target<br>vulnerable app"]
-    target --> phoenix["Arize Phoenix<br>traces"]
-    phoenix --> mcp["Phoenix MCP<br>adapter"]
-    mcp --> analyst["Gemini analyst<br>agent"]
-    watcher["Evidence<br>watcher"] --> mcp
-    watcher --> analyst
-    analyst --> casefile["Structured<br>Case File"]
-    casefile --> firestore["Firestore"]
-    firestore --> dashboard["Evidence<br>dashboard"]
-    dashboard --> human["Human<br>approval"]
-    human --> replay["Regression<br>replay"]
+    subgraph Environment ["Target Environment"]
+        direction TB
+        attacker["Attack prompt"] --> target["Target vulnerable app"]
+        target --> phoenix["Arize Phoenix traces"]
+    end
+
+    subgraph Analysis ["Forensic Analysis Engine"]
+        direction TB
+        phoenix --> mcp["Phoenix MCP adapter"]
+        watcher["Evidence watcher"] --> mcp
+        watcher --> analyst["Gemini analyst agent"]
+        mcp --> analyst
+    end
+
+    subgraph Review ["Storage & Review"]
+        direction TB
+        analyst --> casefile["Structured Case File"]
+        casefile --> firestore["Firestore"]
+        firestore --> dashboard["Evidence dashboard"]
+        dashboard --> human["Human approval"]
+        human --> replay["Regression replay"]
+    end
 ```
 
 ## Key Capabilities
