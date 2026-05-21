@@ -4,6 +4,15 @@ Evidence Freezer investigates suspicious LLM traces and turns them into reviewab
 
 This project is built for the **Google Cloud Rapid Agent Hackathon: Building Agents for Real-World Challenges** and targets the **Arize partner track** through Phoenix tracing and MCP.
 
+## Live Demo
+
+- **Hosted project URL:** https://evidence-dashboard-bc3cp4w4aq-uk.a.run.app
+- **Demo video:** https://youtu.be/BjJn8DNQQCI
+- **Demo target app:** https://target-vulnerable-app-bc3cp4w4aq-uk.a.run.app
+- **Fresh verified case:** https://evidence-dashboard-bc3cp4w4aq-uk.a.run.app/cases/case_57b91eb7f050d8f5a094
+
+Use the dashboard as the submission URL. The target app is the attack surface used to generate Phoenix traces that Evidence Freezer turns into dashboard case files.
+
 ## Why This Exists
 
 LLM apps can fail in ways normal logs do not explain well: prompt injection, poisoned retrieval context, unsafe tool calls, and unsupported model claims. Teams need more than an alert. They need the trace, the evidence, and a proposed next step.
@@ -172,14 +181,3 @@ The demo is designed to be easy to follow:
 5. Review the generated Case File in the dashboard.
 6. Approve a test-only patch replay.
 7. Show that the remediation blocks the original attack pattern.
-
-## Before Publishing
-
-- Hosted project URL: add after deployment.
-- Demo video URL: add after recording.
-- Public repository URL: add after publishing.
-- Open-source license: add a root `LICENSE` file before submission so Devpost and GitHub can detect it.
-
-## Project Status
-
-This is an MVP/demo implementation focused on the Arize/Phoenix MCP security workflow. The primary remaining submission work is deployment, demo rehearsal, video capture, public repository publishing, and license selection.
