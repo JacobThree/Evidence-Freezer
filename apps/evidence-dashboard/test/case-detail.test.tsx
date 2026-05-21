@@ -46,11 +46,13 @@ describe('case-detail components', () => {
   });
 
   it('builds raw Phoenix trace and session links', () => {
+    process.env.PHOENIX_PROJECT_NAME = 'default';
     expect(phoenixTraceUrl(caseFile)).toBe(
-      'http://localhost:6006/projects/evidence-freezer/traces/trace_seed_prompt_injection',
+      'http://localhost:6006/projects/default/traces/trace_seed_prompt_injection',
     );
     expect(phoenixSessionUrl({ ...caseFile, session_id: 'session-1' })).toBe(
-      'http://localhost:6006/projects/evidence-freezer/sessions/session-1',
+      'http://localhost:6006/projects/default/sessions/session-1',
     );
+    delete process.env.PHOENIX_PROJECT_NAME;
   });
 });

@@ -137,14 +137,14 @@ export function formatDateTime(value: string): string {
 }
 
 export function phoenixTraceUrl(caseFile: CaseFile): string {
-  return phoenixUrl(`/projects/${caseFile.project_id}/traces/${caseFile.trace_id}`);
+  return phoenixUrl(`/projects/${phoenixProjectName(caseFile)}/traces/${caseFile.trace_id}`);
 }
 
 export function phoenixSessionUrl(caseFile: CaseFile): string | undefined {
   if (!caseFile.session_id) {
     return undefined;
   }
-  return phoenixUrl(`/projects/${caseFile.project_id}/sessions/${caseFile.session_id}`);
+  return phoenixUrl(`/projects/${phoenixProjectName(caseFile)}/sessions/${caseFile.session_id}`);
 }
 
 async function listFirestoreCaseFiles(): Promise<CaseFile[]> {
@@ -234,6 +234,10 @@ function requiredEnv(name: string): string {
 function phoenixUrl(pathname: string): string {
   const baseUrl = (process.env.PHOENIX_HOST ?? 'http://localhost:6006').replace(/\/$/, '');
   return `${baseUrl}${pathname}`;
+}
+
+function phoenixProjectName(caseFile: CaseFile): string {
+  return process.env.PHOENIX_PROJECT_NAME ?? caseFile.project_id;
 }
 
 function findWorkspaceRoot(): string {

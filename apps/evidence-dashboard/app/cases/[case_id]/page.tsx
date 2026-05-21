@@ -62,8 +62,8 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
             <Metadata label="Detected" value={formatDateTime(caseFile.detected_at)} />
           </dl>
           <div className="raw-links" aria-label="Raw telemetry links">
-            <a href={phoenixTraceUrl(caseFile)}>Open raw trace</a>
-            {sessionUrl ? <a href={sessionUrl}>Open raw session</a> : null}
+            <a href={phoenixTraceUrl(caseFile)} target="_blank" rel="noreferrer">Open raw trace</a>
+            {sessionUrl ? <a href={sessionUrl} target="_blank" rel="noreferrer">Open raw session</a> : null}
           </div>
         </article>
 
