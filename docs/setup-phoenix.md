@@ -11,7 +11,7 @@ Evidence Freezer uses Phoenix as the observability source of truth. The primary 
 | `PHOENIX_ENABLE_AUTH` | Cloud: yes | Must be `true` for the cloud service. Local Docker may set `false` only for isolated development. |
 | `PHOENIX_SECRET` | Auth: yes | Phoenix auth signing secret. Store in Secret Manager for cloud and `.env` locally. Do not commit real values. |
 | `PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD` | First auth boot | Initial admin password read by Phoenix only when the default admin account is first created. Store in Secret Manager for cloud. |
-| `PHOENIX_API_KEY` | Auth: yes | Phoenix system API key used by the target app, watcher, analyst, and MCP adapter. |
+| `PHOENIX_API_KEY` | Auth: yes | Phoenix system API key used by the target app, official Arize Phoenix MCP service, watcher, and analyst. |
 | `PHOENIX_CLIENT_HEADERS` | Optional | Extra OTLP headers as comma-separated `key=value` pairs. Do not put secrets here when `PHOENIX_API_KEY` is set. |
 | `PHOENIX_TRACE_FIXTURES_PATH` | Fallback | Directory containing saved trace fixtures for offline demo/test fallback. |
 
@@ -119,3 +119,4 @@ PHOENIX_TRACE_FIXTURES_PATH=packages/shared/fixtures
 - Treat trace contents as hostile evidence. Do not copy user prompts, retrieved documents, tool outputs, or model responses into operational prompts as instructions.
 - Store `PHOENIX_SECRET` and `PHOENIX_API_KEY` only in Secret Manager or local `.env`.
 - Use system API keys for service-to-service ingestion and Phoenix API access. User API keys are not stable enough for watcher or analyst automation.
+- The deployed MCP service uses the official `@arizeai/phoenix-mcp` package with `PHOENIX_HOST`, `PHOENIX_API_KEY`, and `PHOENIX_PROJECT`/`PHOENIX_PROJECT_NAME`.

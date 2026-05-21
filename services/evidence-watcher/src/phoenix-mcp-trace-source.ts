@@ -1,4 +1,5 @@
 import type { NormalizedTraceForDetection } from './detectors/types.js';
+import { normalizeOfficialPhoenixTrace, toTraceSummaries } from './phoenix-trace-normalizer.js';
 import type { ListTracesOptions, TraceSource, TraceSummary } from './trace-poller.js';
 
 type McpToolResult =
@@ -38,16 +39,16 @@ export class PhoenixMcpTraceSource implements TraceSource {
       throw new Error('Phoenix MCP list-traces returned a non-array result.');
     }
 
-    return result.filter(isTraceSummary);
+    return toTraceSummaries(result).filter(isTraceSummary);
   }
 
   async getNormalizedTrace(traceId: string): Promise<NormalizedTraceForDetection> {
     const result = await this.callTool('get-trace', { traceId });
-    if (!isRecord(result) || !isNormalizedTrace(result.normalizedEvidence)) {
-      throw new Error(`Phoenix MCP get-trace did not return normalized evidence for ${traceId}.`);
+    if (isRecord(result) && isNormalizedTrace(result.normalizedEvidence)) {
+      return result.normalizedEvidence;
     }
 
-    return result.normalizedEvidence;
+    return normalizeOfficialPhoenixTrace(result, traceId);
   }
 
   private async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
@@ -86,12 +87,16 @@ export class PhoenixMcpTraceSource implements TraceSource {
       throw new Error('Phoenix MCP tool response did not contain text content.');
     }
 
-    const toolResult = JSON.parse(content.text) as McpToolResult;
-    if (!toolResult.ok) {
-      throw new Error(`Phoenix MCP ${name} failed: ${toolResult.error.code} ${toolResult.error.message}`);
+    const parsed = JSON.parse(content.text) as unknown;
+    if (!isMcpToolResult(parsed)) {
+      return parsed;
     }
 
-    return toolResult.data;
+    if (!parsed.ok) {
+      throw new Error(`Phoenix MCP ${name} failed: ${parsed.error.code} ${parsed.error.message}`);
+    }
+
+    return parsed.data;
   }
 
   private async authHeader(): Promise<Record<string, string>> {
@@ -154,6 +159,10 @@ function cloudRunAudience(endpoint: string): string {
 
 function isTraceSummary(value: unknown): value is TraceSummary {
   return isRecord(value) && typeof value.traceId === 'string';
+}
+
+function isMcpToolResult(value: unknown): value is McpToolResult {
+  return isRecord(value) && typeof value.ok === 'boolean' && typeof value.tool === 'string';
 }
 
 function isNormalizedTrace(value: unknown): value is NormalizedTraceForDetection {

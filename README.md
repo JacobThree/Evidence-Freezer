@@ -14,15 +14,15 @@ Evidence Freezer solves that workflow:
 
 1. A vulnerable demo RAG/tool app is attacked.
 2. Phoenix captures the LLM trace, spans, prompts, retrieval, and tool evidence.
-3. A watcher identifies suspicious traces.
-4. A Gemini-powered analyst agent investigates through Phoenix MCP tools.
+3. A watcher identifies suspicious traces through the official Arize Phoenix MCP server.
+4. A Gemini 2.5 Pro analyst agent on Vertex AI Agent Engine investigates the evidence.
 5. Firestore stores a structured Case File.
 6. A Next.js dashboard lets a human review evidence and approve a test-only prompt patch.
 
 ## Hackathon
 
 - **Partner track:** Arize
-- **Partner integration:** Phoenix observability plus a Streamable HTTP Phoenix MCP adapter
+- **Partner integration:** Arize Phoenix observability plus the official `@arizeai/phoenix-mcp` MCP server
 - **Agent behavior:** Multi-step investigation, evidence gathering, classification, root-cause analysis, and remediation drafting
 - **Human oversight:** The agent can propose a patch, but cannot approve or deploy production prompt changes
 - **Real-world challenge:** Security triage and incident response for LLM applications
@@ -34,7 +34,8 @@ apps/
   target-vulnerable-app/      Demo LLM app with deterministic attack fixtures
   evidence-dashboard/         Case File review and patch approval UI
 services/
-  phoenix-mcp-adapter/        Streamable HTTP MCP adapter for Phoenix trace tools
+  arize-phoenix-mcp/          Private Cloud Run wrapper around official @arizeai/phoenix-mcp
+  phoenix-mcp-adapter/        Legacy local MCP-shaped adapter kept for compatibility tests
   evidence-watcher/           Trace polling, detection, analyst invocation, Firestore writes
   evidence-analyst-adk/       Gemini/ADK analyst instructions and deployment helpers
 packages/
@@ -55,7 +56,7 @@ flowchart TD
 
     subgraph Analysis ["Forensic Analysis Engine"]
         direction TB
-        phoenix --> mcp["Phoenix MCP adapter"]
+        phoenix --> mcp["Official Arize Phoenix MCP"]
         watcher["Evidence watcher"] --> mcp
         watcher --> analyst["Gemini analyst agent"]
         mcp --> analyst
@@ -78,7 +79,7 @@ flowchart TD
 - Treats all trace content as hostile evidence, not instructions.
 - Produces strict schema-validated Case Files.
 - Keeps prompt remediation human-gated.
-- Disables Phoenix prompt write tools by default; `save-prompt-patch` requires `PHOENIX_MCP_ENABLE_PROMPT_WRITES=true`.
+- Uses `@arizeai/phoenix-mcp` for Phoenix trace access in deployed architecture.
 - Runs locally in deterministic fixture mode without external model credentials.
 
 ## Quickstart
@@ -109,7 +110,7 @@ Run live Google Cloud smoke verification after deployment:
 pnpm smoke:gcp
 ```
 
-The smoke check verifies Cloud Run readiness, Firestore, Scheduler state, public/private IAM drift, target chat, dashboard case pages, Phoenix auth, MCP privacy, and deployed watcher agent mode. For a real Gemini/Agent Engine deployment, run:
+The smoke check verifies Cloud Run readiness, Firestore, Scheduler state, public/private IAM drift, target chat, dashboard case pages, Phoenix auth, official MCP privacy, watcher MCP endpoint wiring, and deployed watcher agent mode. For a real Gemini/Agent Engine deployment, run:
 
 ```bash
 EXPECT_WATCHER_AGENT_MODE=rest pnpm smoke:gcp
@@ -125,7 +126,7 @@ pnpm --filter evidence-dashboard dev
 Useful service checks:
 
 ```bash
-pnpm --filter phoenix-mcp-adapter test
+pnpm --filter arize-phoenix-mcp test
 pnpm --filter evidence-watcher test
 python -m pytest services/evidence-analyst-adk/tests
 ```
@@ -136,10 +137,10 @@ Local development can use deterministic fixtures. Cloud/demo deployment uses:
 
 - Phoenix with auth enabled
 - Phoenix system API key in Secret Manager
-- Cloud Run for target app, MCP adapter, watcher, and dashboard
+- Cloud Run for target app, official Arize Phoenix MCP wrapper, watcher, and dashboard
 - Cloud Scheduler for watcher polling
 - Firestore for Case Files and audit events
-- Gemini/ADK analyst runtime
+- Gemini 2.5 Pro on Vertex AI Agent Engine
 
 See:
 

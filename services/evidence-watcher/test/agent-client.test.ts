@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import validCase from '../../../packages/shared/fixtures/valid-case.json' with { type: 'json' };
-import { RestStreamQueryAgentClient, VertexAiSdkAgentClient } from '../src/agent-client.js';
+import { fileURLToPath } from 'node:url';
+import { agentClientFromEnv, RestStreamQueryAgentClient, VertexAiSdkAgentClient } from '../src/agent-client.js';
+
+const fixturePath = fileURLToPath(new URL('../../../packages/shared/fixtures/valid-case.json', import.meta.url));
 
 describe('agent clients', () => {
+  it('keeps local fixture mode as the default', async () => {
+    const client = agentClientFromEnv({
+      WATCHER_AGENT_FIXTURE_PATH: fixturePath,
+    });
+
+    await expect(client.invoke(invocationInput())).resolves.toMatchObject({
+      trace_id: validCase.trace_id,
+      incident_type: validCase.incident_type,
+    });
+  });
+
   it('extracts Case File JSON from REST streamQuery responses', async () => {
     let message = '';
     const client = new RestStreamQueryAgentClient({

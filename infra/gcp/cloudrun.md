@@ -1,6 +1,6 @@
 # Cloud Run Deployment
 
-Evidence Freezer runs four HTTP services on Cloud Run for the MVP demo: the vulnerable target app, Phoenix MCP adapter, evidence watcher, and evidence dashboard. Use `us-east4` unless a required model or runtime is unavailable there.
+Evidence Freezer runs four HTTP services on Cloud Run for the MVP demo: the vulnerable target app, official Arize Phoenix MCP wrapper, evidence watcher, and evidence dashboard. Use `us-east4` unless a required model or runtime is unavailable there.
 
 Set these shell values before running commands:
 
@@ -27,7 +27,7 @@ Create separate runtime identities so IAM can stay narrow:
 
 ```bash
 gcloud iam service-accounts create target-app-sa --project="${PROJECT_ID}"
-gcloud iam service-accounts create phoenix-mcp-adapter-sa --project="${PROJECT_ID}"
+gcloud iam service-accounts create arize-phoenix-mcp-sa --project="${PROJECT_ID}"
 gcloud iam service-accounts create evidence-watcher-sa --project="${PROJECT_ID}"
 gcloud iam service-accounts create evidence-dashboard-sa --project="${PROJECT_ID}"
 gcloud iam service-accounts create scheduler-watcher-invoker-sa --project="${PROJECT_ID}"
@@ -42,7 +42,7 @@ gcloud secrets add-iam-policy-binding phoenix-system-api-key \
   --project="${PROJECT_ID}"
 
 gcloud secrets add-iam-policy-binding phoenix-system-api-key \
-  --member="serviceAccount:phoenix-mcp-adapter-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --member="serviceAccount:arize-phoenix-mcp-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role=roles/secretmanager.secretAccessor \
   --project="${PROJECT_ID}"
 
@@ -64,10 +64,10 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --role=roles/datastore.viewer
 ```
 
-Grant the watcher permission to call the private MCP adapter:
+Grant the watcher permission to call the private official MCP service:
 
 ```bash
-gcloud run services add-iam-policy-binding phoenix-mcp-adapter \
+gcloud run services add-iam-policy-binding arize-phoenix-mcp \
   --region="${REGION}" \
   --member="serviceAccount:evidence-watcher-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role=roles/run.invoker \
@@ -97,21 +97,21 @@ gcloud run deploy target-vulnerable-app \
 
 Use `--set-secrets GEMINI_API_KEY=gemini-api-key:latest` only when `USE_REAL_GEMINI=true`.
 
-## Phoenix MCP Adapter
+## Official Arize Phoenix MCP
 
-The adapter must stay private. The existing detailed runbook is in `infra/gcp/phoenix-mcp-adapter.md`.
+The MCP service must stay private. It wraps the official `@arizeai/phoenix-mcp` stdio server with an HTTP `/mcp` endpoint for Cloud Run. The detailed runbook is in `infra/gcp/arize-phoenix-mcp.md`.
 
 ```bash
 docker build \
-  -f services/phoenix-mcp-adapter/Dockerfile \
-  -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/phoenix-mcp-adapter:latest" \
+  -f services/arize-phoenix-mcp/Dockerfile \
+  -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/arize-phoenix-mcp:latest" \
   .
-docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/phoenix-mcp-adapter:latest"
+docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/arize-phoenix-mcp:latest"
 
-gcloud run deploy phoenix-mcp-adapter \
-  --image "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/phoenix-mcp-adapter:latest" \
+gcloud run deploy arize-phoenix-mcp \
+  --image "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/arize-phoenix-mcp:latest" \
   --region="${REGION}" \
-  --service-account="phoenix-mcp-adapter-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --service-account="arize-phoenix-mcp-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
   --no-allow-unauthenticated \
   --set-env-vars PHOENIX_HOST=https://PHOENIX_HOST,PHOENIX_PROJECT_NAME=default \
   --set-secrets PHOENIX_API_KEY=phoenix-system-api-key:latest \
@@ -134,7 +134,7 @@ gcloud run deploy evidence-watcher \
   --region="${REGION}" \
   --service-account="evidence-watcher-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
   --no-allow-unauthenticated \
-  --set-env-vars GOOGLE_CLOUD_PROJECT="${PROJECT_ID}",WATCHER_PROJECT_ID="${PROJECT_ID}",PHOENIX_PROJECT_NAME=default,PHOENIX_MCP_URL=https://PHOENIX_MCP_ADAPTER_URL/mcp,PHOENIX_MCP_AUTH_MODE=google_id_token,PHOENIX_MCP_AUDIENCE=https://PHOENIX_MCP_ADAPTER_URL,WATCHER_AGENT_MODE=rest,AGENT_ENGINE_STREAM_QUERY_URL=https://AGENT_ENGINE_STREAM_QUERY_URL,TARGET_APP_BASE_URL=https://TARGET_APP_URL,WATCHER_DEMO_MODE=false \
+  --set-env-vars GOOGLE_CLOUD_PROJECT="${PROJECT_ID}",WATCHER_PROJECT_ID="${PROJECT_ID}",PHOENIX_PROJECT_NAME=default,PHOENIX_MCP_URL=https://ARIZE_PHOENIX_MCP_URL/mcp,PHOENIX_MCP_AUTH_MODE=google_id_token,PHOENIX_MCP_AUDIENCE=https://ARIZE_PHOENIX_MCP_URL,WATCHER_AGENT_MODE=rest,AGENT_ENGINE_STREAM_QUERY_URL=https://AGENT_ENGINE_STREAM_QUERY_URL,TARGET_APP_BASE_URL=https://TARGET_APP_URL,WATCHER_DEMO_MODE=false \
   --set-secrets AGENT_ENGINE_ACCESS_TOKEN=agent-engine-access-token:latest,WATCHER_OPERATOR_TOKEN=watcher-operator-token:latest \
   --project="${PROJECT_ID}"
 ```
@@ -177,7 +177,7 @@ Build all deployable services locally before submitting images:
 
 ```bash
 pnpm --filter target-vulnerable-app build
-pnpm --filter phoenix-mcp-adapter build
+pnpm --filter arize-phoenix-mcp build
 pnpm --filter evidence-watcher build
 pnpm --filter evidence-dashboard build
 ```
@@ -185,7 +185,7 @@ pnpm --filter evidence-dashboard build
 After deployment, each service should answer health checks:
 
 ```bash
-for service in target-vulnerable-app phoenix-mcp-adapter evidence-watcher evidence-dashboard; do
+for service in target-vulnerable-app arize-phoenix-mcp evidence-watcher evidence-dashboard; do
   url="$(gcloud run services describe "$service" --region="${REGION}" --project="${PROJECT_ID}" --format='value(status.url)')"
   curl -i -H "Authorization: Bearer $(gcloud auth print-identity-token --audiences="${url}")" "${url}/healthz"
 done

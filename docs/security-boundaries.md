@@ -7,16 +7,17 @@ To enforce principle of least privilege, we use separate service accounts for ea
 1. **target-app-sa**: 
    - Used by the target vulnerable app. 
    - Has access only to safe external APIs. No permissions to Firestore or GCP Admin.
-2. **phoenix-mcp-sa**:
-   - Used by the Phoenix MCP adapter on Cloud Run.
-   - Requires `roles/run.invoker` to be called by the analyst.
+2. **arize-phoenix-mcp-sa**:
+   - Used by the official Arize Phoenix MCP wrapper on Cloud Run.
+   - Reads only the Phoenix system API key secret.
 3. **evidence-watcher-sa**:
    - Poller service account.
    - Needs `roles/datastore.user` (Firestore read/write).
    - Needs `roles/aiplatform.user` (or equivalent) to invoke the Gemini Enterprise Analyst runtime.
+   - Needs `roles/run.invoker` for the private official Arize Phoenix MCP service.
 4. **adk-analyst-sa**:
    - Used by the Vertex AI Agent Engine/Gemini Enterprise runtime.
-   - Needs `roles/run.invoker` for the Phoenix MCP adapter.
+   - Needs `roles/run.invoker` for the private official Arize Phoenix MCP service.
 
 ## Secret Management
 - **Phoenix API Keys**: `PHOENIX_SECRET` and `PHOENIX_API_KEY` must **never** be committed to the repository. They must be managed via Google Secret Manager in production and `.env` locally.
@@ -33,5 +34,5 @@ To enforce principle of least privilege, we use separate service accounts for ea
 
 ## Prompt Patch Controls
 - Prompt remediation is human-gated. Analyst output may set `prompt_patch.status` to `proposed`, but it must not approve, deploy, promote, or mutate production prompts.
-- The Phoenix MCP adapter exposes read-only trace, span, session, prompt, and draft-patch tools by default.
-- `save-prompt-patch` is disabled and hidden by default. Enable it only for a reviewed human-gated workflow with `PHOENIX_MCP_ENABLE_PROMPT_WRITES=true`; do not enable it for the MVP analyst runtime.
+- The deployed MCP integration uses the official `@arizeai/phoenix-mcp` package for Phoenix trace/span/session/prompt access.
+- Prompt writes remain human-gated by policy. Do not enable mutation-oriented MCP tools for the MVP analyst runtime.

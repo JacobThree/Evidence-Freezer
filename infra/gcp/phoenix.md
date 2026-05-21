@@ -31,7 +31,7 @@ The target app sends traces to `PHOENIX_COLLECTOR_ENDPOINT` with `authorization:
 
 ## System API Key
 
-Create the system API key from the authenticated Phoenix admin UI after first deploy. Store it as `phoenix-system-api-key` in Secret Manager and inject it into the target app, watcher, analyst, and Phoenix MCP adapter environments.
+Create the system API key from the authenticated Phoenix admin UI after first deploy. Store it as `phoenix-system-api-key` in Secret Manager and inject it into the target app and the official Arize Phoenix MCP service. The watcher and analyst call that private MCP service with Cloud Run identity tokens.
 
 ## Fallback Contract
 

@@ -12,7 +12,7 @@ Default expectations match the current demo stack:
 - Region: `us-east4`
 - Target app: public
 - Dashboard: public
-- Phoenix MCP adapter: private
+- Official Arize Phoenix MCP service: private
 - Evidence watcher: private
 - Scheduler job: paused
 - Watcher analyst mode: fixture
@@ -38,7 +38,8 @@ What it verifies:
 - Target app root and `/api/chat` return healthy responses.
 - Dashboard `/cases` and prompt-injection case detail render.
 - Phoenix UI is reachable and auth config is present.
-- MCP adapter rejects unauthenticated callers.
+- Official Arize Phoenix MCP service rejects unauthenticated callers.
+- Watcher `PHOENIX_MCP_URL` points to the official MCP service `/mcp` endpoint and uses `PHOENIX_MCP_AUTH_MODE=google_id_token`.
 - Watcher mode is `fixture` or `rest`, depending on expectation.
 
 Use `EXPECT_WATCHER_AGENT_MODE=rest` when the Gemini/ADK Agent Engine is wired in. The script will fail unless `AGENT_ENGINE_STREAM_QUERY_URL` is present on the deployed watcher.

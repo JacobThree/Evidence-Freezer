@@ -18,7 +18,7 @@ const services = {
   dashboard: 'evidence-dashboard',
   phoenix: 'evidence-freezer-phoenix',
   watcher: 'evidence-watcher',
-  mcp: 'phoenix-mcp-adapter',
+  mcp: process.env.MCP_SERVICE ?? 'arize-phoenix-mcp',
 };
 
 const checks = [];
@@ -38,7 +38,7 @@ async function main() {
   await checkScheduler();
   await checkIam();
   await checkHttp(described);
-  await checkWatcherEnv(described.watcher);
+  await checkWatcherEnv(described.watcher, described.mcp);
 
   const failed = checks.filter((item) => !item.ok);
   for (const item of checks) {
@@ -184,17 +184,19 @@ async function checkHttp(described) {
     assert(body.includes('authenticationEnabled'), 'missing auth config marker');
   });
 
-  await checkAsync('MCP adapter rejects unauthenticated callers', async () => {
+  await checkAsync('Official Arize Phoenix MCP rejects unauthenticated callers', async () => {
     const response = await fetchWithTimeout(new URL('/mcp', described.mcp.status.url));
     assert(response.status === 401 || response.status === 403, `status ${response.status}`);
   });
 }
 
-async function checkWatcherEnv(watcher) {
+async function checkWatcherEnv(watcher, mcp) {
   await checkAsync(`Watcher agent mode is ${expectedWatcherAgentMode}`, async () => {
     const env = watcher.spec?.template?.spec?.containers?.[0]?.env ?? [];
     const values = Object.fromEntries(env.map((item) => [item.name, item.value ?? '<secret>']));
     assert(values.WATCHER_AGENT_MODE === expectedWatcherAgentMode, `WATCHER_AGENT_MODE=${values.WATCHER_AGENT_MODE}`);
+    assert(values.PHOENIX_MCP_URL === `${mcp.status.url}/mcp`, `PHOENIX_MCP_URL=${values.PHOENIX_MCP_URL}`);
+    assert(values.PHOENIX_MCP_AUTH_MODE === 'google_id_token', `PHOENIX_MCP_AUTH_MODE=${values.PHOENIX_MCP_AUTH_MODE}`);
     if (expectedWatcherAgentMode === 'rest') {
       assert(values.AGENT_ENGINE_STREAM_QUERY_URL, 'AGENT_ENGINE_STREAM_QUERY_URL missing');
     }

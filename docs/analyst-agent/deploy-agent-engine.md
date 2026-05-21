@@ -1,6 +1,6 @@
 # Deploy Analyst To Agent Engine
 
-Evidence Freezer uses a code-defined ADK analyst hosted on Gemini Enterprise Agent Platform runtime. The runtime resource is a Vertex AI Agent Engine reasoning engine; optional Gemini Enterprise registration points at that deployed reasoning engine resource path.
+Evidence Freezer uses a code-defined ADK analyst hosted on Gemini Enterprise Agent Platform runtime with Gemini 2.5 Pro. The runtime resource is a Vertex AI Agent Engine reasoning engine; optional Gemini Enterprise registration points at that deployed reasoning engine resource path.
 
 Google's current documentation describes Agent Platform Runtime deployment as a managed runtime for agents and Gemini Enterprise registration as a separate step for ADK agents hosted on Vertex AI Agent Engine.
 
@@ -14,10 +14,10 @@ Google's current documentation describes Agent Platform Runtime deployment as a 
 
 ## IAM And Network Prerequisites
 
-Grant the analyst runtime service account permission to invoke the private Phoenix MCP Cloud Run service:
+Grant the analyst runtime service account permission to invoke the private official Arize Phoenix MCP Cloud Run service:
 
 ```bash
-gcloud run services add-iam-policy-binding phoenix-mcp-adapter \
+gcloud run services add-iam-policy-binding arize-phoenix-mcp \
   --project "$GOOGLE_CLOUD_PROJECT" \
   --region "$GOOGLE_CLOUD_REGION" \
   --member "serviceAccount:$PHOENIX_MCP_SERVICE_ACCOUNT" \
@@ -34,11 +34,11 @@ From `services/evidence-analyst-adk`, configure the runtime:
 export GOOGLE_CLOUD_PROJECT="evidence-freezer-dev"
 export GOOGLE_CLOUD_REGION="us-east4"
 export AGENT_ENGINE_STAGING_BUCKET="gs://evidence-freezer-dev-agent-engine-staging"
-export PHOENIX_MCP_URL="https://phoenix-mcp-adapter-HASH-ue.a.run.app/mcp"
+export PHOENIX_MCP_URL="https://arize-phoenix-mcp-HASH-ue.a.run.app/mcp"
 export PHOENIX_MCP_AUTH_MODE="google_id_token"
 export PHOENIX_MCP_AUDIENCE="$PHOENIX_MCP_URL"
 export PHOENIX_MCP_SERVICE_ACCOUNT="adk-analyst-sa@evidence-freezer-dev.iam.gserviceaccount.com"
-export PHOENIX_MCP_TOOL_FILTER="list-traces,get-trace,get-spans,get-session,get-prompt,draft-prompt-patch"
+export PHOENIX_MCP_TOOL_FILTER="list-traces,get-trace,get-spans,get-session,get-prompt"
 ```
 
 Preview the deployment package:
