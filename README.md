@@ -13,6 +13,23 @@ This project is built for the **Google Cloud Rapid Agent Hackathon: Building Age
 
 Use the dashboard as the submission URL. The target app is the attack surface used to generate Phoenix traces that Evidence Freezer turns into dashboard case files.
 
+## Devpost Media
+
+Devpost accepts JPG, PNG, or GIF images up to 5 MB and recommends a 3:2 ratio. The generated screenshots below are `1500x1000` PNGs.
+
+- **Recommended thumbnail:** [media/devpost/01-thumbnail-case-detail.png](media/devpost/01-thumbnail-case-detail.png)
+- **Gallery image 1:** [media/devpost/01-thumbnail-case-detail.png](media/devpost/01-thumbnail-case-detail.png)
+- **Gallery image 2:** [media/devpost/02-dashboard-case-list.png](media/devpost/02-dashboard-case-list.png)
+- **Gallery image 3:** [media/devpost/03-remediation-replay.png](media/devpost/03-remediation-replay.png)
+- **Gallery image 4:** [media/devpost/05-phoenix-trace.png](media/devpost/05-phoenix-trace.png)
+- **Optional extra:** [media/devpost/04-target-attack.png](media/devpost/04-target-attack.png)
+
+Regenerate these from the public deployment:
+
+```bash
+pnpm --filter evidence-dashboard exec node scripts/capture-devpost-images.mjs
+```
+
 ## Why This Exists
 
 LLM apps can fail in ways normal logs do not explain well: prompt injection, poisoned retrieval context, unsafe tool calls, and unsupported model claims. Teams need more than an alert. They need the trace, the evidence, and a proposed next step.
