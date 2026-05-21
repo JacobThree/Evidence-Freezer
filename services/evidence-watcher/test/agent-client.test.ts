@@ -4,21 +4,61 @@ import { RestStreamQueryAgentClient, VertexAiSdkAgentClient } from '../src/agent
 
 describe('agent clients', () => {
   it('extracts Case File JSON from REST streamQuery responses', async () => {
+    let message = '';
     const client = new RestStreamQueryAgentClient({
       endpoint: 'https://agent.example.test/streamQuery',
-      fetchImpl: async () =>
-        new Response(
+      fetchImpl: async (_input, init) => {
+        const body = JSON.parse(String(init?.body));
+        message = body.input.message;
+        expect(body).not.toHaveProperty('class_method');
+        return new Response(
           JSON.stringify({
-            output: {
-              text: `Analyst result:\n${JSON.stringify(validCase)}`,
+            content: {
+              parts: [
+                {
+                  text: `Analyst result:\n${JSON.stringify(validCase)}`,
+                },
+              ],
             },
           }),
-        ),
+        );
+      },
     });
 
     await expect(client.invoke(invocationInput())).resolves.toMatchObject({
       trace_id: validCase.trace_id,
       incident_type: validCase.incident_type,
+    });
+    expect(message).toContain('Normalized trace evidence:');
+    expect(message).toContain('Detector pre-screen results:');
+  });
+
+  it('fetches a metadata access token for Agent Engine REST endpoints', async () => {
+    const calls: { url: string; authorization?: string }[] = [];
+    const client = new RestStreamQueryAgentClient({
+      endpoint: 'https://us-east4-aiplatform.googleapis.com/v1/projects/p/locations/us-east4/reasoningEngines/r:streamQuery',
+      fetchImpl: async (input, init) => {
+        const url = String(input);
+        calls.push({
+          url,
+          authorization: init?.headers instanceof Headers
+            ? init.headers.get('authorization') ?? undefined
+            : (init?.headers as Record<string, string> | undefined)?.authorization,
+        });
+
+        if (url.includes('metadata.google.internal')) {
+          return Response.json({ access_token: 'metadata-token' });
+        }
+        return Response.json({ actions: { state_delta: { case_file: JSON.stringify(validCase) } } });
+      },
+    });
+
+    await client.invoke(invocationInput());
+
+    expect(calls[0]).toMatchObject({ url: expect.stringContaining('metadata.google.internal') });
+    expect(calls[1]).toMatchObject({
+      url: expect.stringContaining('aiplatform.googleapis.com'),
+      authorization: 'Bearer metadata-token',
     });
   });
 

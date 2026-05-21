@@ -103,6 +103,18 @@ pnpm test
 pnpm build
 ```
 
+Run live Google Cloud smoke verification after deployment:
+
+```bash
+pnpm smoke:gcp
+```
+
+The smoke check verifies Cloud Run readiness, Firestore, Scheduler state, public/private IAM drift, target chat, dashboard case pages, Phoenix auth, MCP privacy, and deployed watcher agent mode. For a real Gemini/Agent Engine deployment, run:
+
+```bash
+EXPECT_WATCHER_AGENT_MODE=rest pnpm smoke:gcp
+```
+
 Run the demo apps locally:
 
 ```bash

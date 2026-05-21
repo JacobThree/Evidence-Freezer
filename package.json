@@ -7,7 +7,8 @@
     "build": "pnpm -r build",
     "test": "vitest run",
     "lint": "eslint .",
-    "dev": "pnpm -r dev"
+    "dev": "pnpm -r dev",
+    "smoke:gcp": "node scripts/gcp-smoke.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

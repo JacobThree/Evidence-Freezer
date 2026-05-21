@@ -12,6 +12,10 @@ interface CasesPageProps {
 export default async function CasesPage({ searchParams = {} }: CasesPageProps) {
   const filters = readFilters(searchParams);
   const cases = filterCaseFiles(await listCaseFiles(), filters);
+  const sourceLabel =
+    process.env.EVIDENCE_DASHBOARD_CASE_SOURCE === 'firestore'
+      ? 'Live Firestore mode'
+      : 'Demo local mode';
 
   return (
     <main className="page-shell">
@@ -20,7 +24,7 @@ export default async function CasesPage({ searchParams = {} }: CasesPageProps) {
           <p className="eyebrow">Evidence Freezer</p>
           <h1>Case files</h1>
         </div>
-        <div className="mode-pill">Demo local mode</div>
+        <div className="mode-pill">{sourceLabel}</div>
       </header>
 
       <section className="metric-strip" aria-label="Case inventory summary">

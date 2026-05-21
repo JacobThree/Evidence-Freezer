@@ -24,7 +24,7 @@ def test_root_agent_has_hostile_evidence_policy() -> None:
     assert "benign" in instruction
     assert "inconclusive" in instruction
     assert "if a phoenix mcp tool returns an error" in instruction
-    assert root_agent.output_schema is CaseFileOutput
+    assert "json object" in instruction
     assert root_agent.tools == []
 
 

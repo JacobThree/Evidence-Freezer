@@ -48,7 +48,7 @@ except ModuleNotFoundError:
 
 SERVICE_DIR = Path(__file__).resolve().parent
 PROMPT_PATH = SERVICE_DIR / "prompts" / "evidence_freezer.md"
-DEFAULT_MODEL = "gemini-3-pro-preview"
+DEFAULT_MODEL = "gemini-2.5-pro"
 
 
 class IncidentType(str, Enum):
@@ -144,7 +144,6 @@ def build_root_agent(config: AnalystConfig | None = None) -> Agent:
         ),
         instruction=load_instruction(),
         tools=tools,
-        output_schema=CaseFileOutput,
         output_key="case_file",
         include_contents="none",
     )
